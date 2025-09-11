@@ -25,4 +25,6 @@ android {
 
 dependencies {
     implementation project(':FtcRobotController')
+    //noinspection Aligned16KB
+    implementation 'org.openftc:easyopencv:1.7.3'
 }
