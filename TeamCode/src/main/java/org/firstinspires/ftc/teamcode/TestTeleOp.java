@@ -17,7 +17,7 @@ public class TestTeleOp extends OpMode {
     private boolean shooterOn = false; // Toggle for shooter
     private int tagId = 20; // Default to blue alliance (ID 20)
     private static final double TICKS_PER_REV = 28; // REV HD Hex Motor shaft
-    private static final double COLLECTOR_GEAR_RATIO = 20.0; // Collector 20:1
+    private static final double COLLECTOR_GEAR_RATIO = 4.0; // Collector 20:1
     private static final double SHOOTER_GEAR_RATIO = 1.0; // Shooter no gearbox
     private Timer debounceTimer = new Timer();
     private boolean lastA = false, lastB = false;
@@ -83,9 +83,9 @@ public class TestTeleOp extends OpMode {
         // Manual controls (Gamepad2)
         // Collector: Dpad_up/down adjust speed (+/-100 RPM), A toggle on/off
         if (gamepad2.dpad_up) {
-            collectorRPM = Math.min(collectorRPM + 100, 2000);
+            collectorRPM += 1;
         } else if (gamepad2.dpad_down) {
-            collectorRPM = Math.max(collectorRPM - 100, 0);
+            collectorRPM -= 1;
         }
         if (gamepad2.a && !lastA && debounceTimer.getElapsedTimeSeconds() > DEBOUNCE_TIME) {
             collectorOn = !collectorOn; // Toggle
