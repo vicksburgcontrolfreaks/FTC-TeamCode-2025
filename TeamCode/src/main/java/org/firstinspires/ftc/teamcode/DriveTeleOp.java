@@ -24,43 +24,45 @@ public class DriveTeleOp extends OpMode {
         } catch (Exception e) {
             telemetry.addData("Error", "Follower failed: " + e.getMessage());
         }
+
+        // Alliance selection (Gamepad2)
+        telemetry.addLine("Alliance Selection: Gamepad2 DPAD Up (Blue) or Down (Red)");
+        if (gamepad2.dpad_up) {
+            tagId = 20; // Blue alliance
+            telemetry.addData("Alliance", "Blue (Tag ID 20)");
+        } else if (gamepad2.dpad_down) {
+            tagId = 24; // Red alliance
+            telemetry.addData("Alliance", "Red (Tag ID 24)");
+        }
+
+        // Telemetry instructions
+        telemetry.addLine("Gamepad1: Left Stick (Move/Strafe), Right Stick (Rotate), Y (Auto-Align)");
+        telemetry.addLine("Gamepad2: A (Collector On/Off), Y (Auto-Align), B (Shoot)");
         telemetry.update();
     }
 
     @Override
     public void loop() {
-        // Alliance selection
-        if (gamepad1.dpad_up) {
-            tagId = 20; // Blue alliance
-            telemetry.addData("Alliance", "Blue (Tag ID 20)");
-        } else if (gamepad1.dpad_down) {
-            tagId = 24; // Red alliance
-            telemetry.addData("Alliance", "Red (Tag ID 24)");
-        }
-
         // Field-centric drive
-        double y = -gamepad1.left_stick_y; // Forward/back
-        double x = gamepad1.left_stick_x; // Strafe
-        double rx = gamepad1.right_stick_x; // Rotate
+        double y = -gamepad1.left_stick_y;
+        double x = gamepad1.left_stick_x;
+        double rx = gamepad1.right_stick_x;
 
-        // Rotate for field-centric (use Pinpoint heading from Follower)
         double heading = follower.getPose().getHeading();
         double rotX = x * Math.cos(heading) - y * Math.sin(heading);
         double rotY = x * Math.sin(heading) + y * Math.cos(heading);
 
-        // Denominator for wheel powers
         double den = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
 
-        // Set powers
         hardware.lf.setPower((rotY + rotX + rx) / den);
         hardware.rf.setPower((rotY - rotX - rx) / den);
         hardware.lr.setPower((rotY - rotX + rx) / den);
         hardware.rr.setPower((rotY + rotX - rx) / den);
 
-        // Collect: Gamepad1 A - run collector until full
-        if (gamepad1.a) {
+        // Collect: Gamepad2 A - run collector until full
+        if (gamepad2.a) {
             if (!hardware.isMagazineFull()) {
-                hardware.collector.setPower(0.5); // Run roller
+                hardware.collector.setPower(0.5);
             } else {
                 hardware.collector.setPower(0);
                 telemetry.addData("Magazine", "Full");
@@ -69,12 +71,17 @@ public class DriveTeleOp extends OpMode {
             hardware.collector.setPower(0);
         }
 
-        // Shoot: Gamepad1 B - call shooting sequence with selected tagId
-        if (gamepad1.b) {
-            shooter.shoot(tagId); // Fixed: Pass tagId
+        // Auto-align rotation: Gamepad2 Y
+        if (gamepad2.y) {
+            shooter.alignRotationOnly(tagId);
         }
 
-        // Update localizer (via Follower)
+        // Shoot: Gamepad2 B
+        if (gamepad2.b) {
+            shooter.shoot(tagId);
+        }
+
+        // Update localizer
         follower.update();
 
         telemetry.addData("Heading", Math.toDegrees(heading));

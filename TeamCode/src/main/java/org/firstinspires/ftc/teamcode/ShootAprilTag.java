@@ -10,7 +10,9 @@ public class ShootAprilTag {
     private double FLIP_POSITION_LAUNCH = 0.5; // Servo pos for launch
     private double FLIP_POSITION_RESET = 0.0; // Reset pos
     private double REVERSE_TIME = 0.5; // Sec to reverse collector
-    private static final double TICKS_PER_REV = 2000; // From Constants (GoBilda motor)
+    private static final double TICKS_PER_REV = 28; // REV HD Hex Motor shaft
+    private static final double COLLECTOR_GEAR_RATIO = 20.0; // Collector 20:1
+    private static final double SHOOTER_GEAR_RATIO = 1.0; // Shooter no gearbox
 
     public ShootAprilTag(RobotHardware hardware) {
         this.hardware = hardware;
@@ -21,70 +23,104 @@ public class ShootAprilTag {
         alignToTag(tagId);
 
         // Step 2: Shooting sequence for 3 balls
-        // Spin shooter (velocity based on distance - TBD)
-        double distance = getDistanceToTag(tagId); // Pass tagId
-        SHOOTER_VELOCITY_RPM = calculateVelocity(distance); // Tune function
-        double shooterTicksPerSec = SHOOTER_VELOCITY_RPM * TICKS_PER_REV / 60.0;
+        double distance = getDistanceToTag(tagId);
+        SHOOTER_VELOCITY_RPM = calculateVelocity(distance);
+        double shooterTicksPerSec = SHOOTER_VELOCITY_RPM * TICKS_PER_REV * SHOOTER_GEAR_RATIO / 60.0;
         hardware.shooter.setVelocity(shooterTicksPerSec);
 
         for (int i = 0; i < 3; i++) {
-            // Spin collector as flywheel
-            double collectorTicksPerSec = COLLECTOR_VELOCITY_RPM * TICKS_PER_REV / 60.0;
+            double collectorTicksPerSec = COLLECTOR_VELOCITY_RPM * TICKS_PER_REV * COLLECTOR_GEAR_RATIO / 60.0;
             hardware.collector.setVelocity(collectorTicksPerSec);
-
-            // Flip to launch
             hardware.flipper.setPosition(FLIP_POSITION_LAUNCH);
-            waitSec(0.5); // Time to launch
-
-            // Reverse collector briefly
-            hardware.collector.setPower(-0.3); // Reverse
+            waitSec(0.5);
+            hardware.collector.setPower(-0.3);
             waitSec(REVERSE_TIME);
             hardware.collector.setPower(0);
-
-            // Reset flipper
             hardware.flipper.setPosition(FLIP_POSITION_RESET);
-            waitSec(0.2); // Reset time
+            waitSec(0.2);
         }
 
-        // Stop motors
         hardware.shooter.setPower(0);
         hardware.collector.setPower(0);
     }
 
-    private void alignToTag(int tagId) {
-        // Simple PID to center tag (tune gains)
+    public void alignRotationOnly(int tagId) {
+        // PID to center tag by rotation only (x=0, y=0)
         double kp = 0.01, ki = 0.0, kd = 0.0;
         double prevErrorX = 0, integralX = 0;
         double prevErrorY = 0, integralY = 0;
-        double prevErrorYaw = 0, integralYaw = 0;
         Timer timeout = new Timer();
-        double TIMEOUT_SEC = 5.0; // Stop after 5 sec if no tag
+        double TIMEOUT_SEC = 5.0;
 
         while (timeout.getElapsedTimeSeconds() < TIMEOUT_SEC) {
             AprilTagDetection detection = getDetection(tagId);
             if (detection == null) {
-                hardware.visionPortal.getCameraState(); // Ensure streaming
+                hardware.visionPortal.getCameraState();
                 continue;
             }
 
-            // Errors: Aim for x=0, y=0, yaw=0 (centered)
+            // Errors: Aim for x=0, y=0 (center on screen)
             double errorX = detection.ftcPose.x;
             double errorY = detection.ftcPose.y;
-            double errorYaw = detection.ftcPose.yaw;
 
             integralX += errorX;
             integralY += errorY;
-            integralYaw += errorYaw;
 
             double derivX = errorX - prevErrorX;
             double derivY = errorY - prevErrorY;
-            double derivYaw = errorYaw - prevErrorYaw;
+
+            // Map x/y errors to rotation (turn)
+            double turn = kp * (errorX + errorY) + ki * (integralX + integralY) + kd * (derivX + derivY);
+            double strafe = 0.0; // No lateral movement
+            double forward = 0.0; // No forward/back movement
+
+            // Drive powers (rotation only)
+            hardware.lf.setPower(turn);
+            hardware.rf.setPower(-turn);
+            hardware.lr.setPower(turn);
+            hardware.rr.setPower(-turn);
+
+            prevErrorX = errorX;
+            prevErrorY = errorY;
+
+            if (Math.abs(errorX) < 1 && Math.abs(errorY) < 1) break; // Threshold
+        }
+
+        // Stop drive
+        hardware.lf.setPower(0);
+        hardware.rf.setPower(0);
+        hardware.lr.setPower(0);
+        hardware.rr.setPower(0);
+    }
+
+    private void alignToTag(int tagId) {
+        // Original full alignment (x, y, yaw)
+        double kp = 0.01, ki = 0.0, kd = 0.0;
+        double prevErrorX = 0, integralX = 0;
+        double prevErrorY = 0, integralY = 0;
+        Timer timeout = new Timer();
+        double TIMEOUT_SEC = 5.0;
+
+        while (timeout.getElapsedTimeSeconds() < TIMEOUT_SEC) {
+            AprilTagDetection detection = getDetection(tagId);
+            if (detection == null) {
+                hardware.visionPortal.getCameraState();
+                continue;
+            }
+
+            double errorX = detection.ftcPose.x;
+            double errorY = detection.ftcPose.y;
+
+            integralX += errorX;
+            integralY += errorY;
+
+            double derivX = errorX - prevErrorX;
+            double derivY = errorY - prevErrorY;
 
             double strafe = kp * errorX + ki * integralX + kd * derivX;
             double forward = kp * errorY + ki * integralY + kd * derivY;
-            double turn = kp * errorYaw + ki * integralYaw + kd * derivYaw;
+            double turn = 0.0;
 
-            // Drive powers (match Constants motor names)
             hardware.lf.setPower(forward + strafe + turn);
             hardware.rf.setPower(forward - strafe - turn);
             hardware.lr.setPower(forward - strafe + turn);
@@ -92,12 +128,10 @@ public class ShootAprilTag {
 
             prevErrorX = errorX;
             prevErrorY = errorY;
-            prevErrorYaw = errorYaw;
 
-            if (Math.abs(errorX) < 1 && Math.abs(errorY) < 1 && Math.abs(errorYaw) < 5) break; // Threshold
+            if (Math.abs(errorX) < 1 && Math.abs(errorY) < 1) break;
         }
 
-        // Stop drive
         hardware.lf.setPower(0);
         hardware.rf.setPower(0);
         hardware.lr.setPower(0);
@@ -113,12 +147,11 @@ public class ShootAprilTag {
 
     private double getDistanceToTag(int tagId) {
         AprilTagDetection detection = getDetection(tagId);
-        return detection != null ? detection.ftcPose.range : 0; // Inches
+        return detection != null ? detection.ftcPose.range : 0;
     }
 
     private double calculateVelocity(double distance) {
-        // TBD with testing, e.g., linear: 1500 + 50 * distance
-        return 1500 + 50 * distance; // RPM
+        return 1500 + 50 * distance; // RPM, TBD
     }
 
     private void waitSec(double sec) {
