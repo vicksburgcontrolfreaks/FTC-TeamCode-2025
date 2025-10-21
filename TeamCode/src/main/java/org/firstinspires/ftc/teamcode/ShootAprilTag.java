@@ -95,11 +95,11 @@ public class ShootAprilTag {
 
     private void alignToTag(int tagId) {
         // Original full alignment (x, y, yaw)
-        double kp = 0.01, ki = 0.0, kd = 0.0;
+        double kp = 0.1, ki = 0.0, kd = 0.0;
         double prevErrorX = 0, integralX = 0;
         double prevErrorY = 0, integralY = 0;
         Timer timeout = new Timer();
-        double TIMEOUT_SEC = 5.0;
+        double TIMEOUT_SEC = 2.5;
 
         while (timeout.getElapsedTimeSeconds() < TIMEOUT_SEC) {
             AprilTagDetection detection = getDetection(tagId);

@@ -14,8 +14,8 @@ import org.firstinspires.ftc.teamcode.Auton.AutonConstants;
 // import com.bylazar.field.Style; // Uncomment if available
 // import org.firstinspires.ftc.teamcode.pedroPathing.Constants; // Uncomment if you have this class
 
-@Autonomous(name = "BlueLongShot", group = "Autonomous")
-public class BlueLongShot extends OpMode {
+@Autonomous(name = "RedLongShot", group = "Autonomous")
+public class RedLongShot extends OpMode {
     private Follower follower;
     private Timer pathTimer, opmodeTimer;
     private int pathState;
@@ -35,17 +35,23 @@ public class BlueLongShot extends OpMode {
 
         telemetry.update();
     }
-
+    private Path scorePreload;
+    private Path redLongScore1;
+    private Path redLongLoad2;
+    private Path redLongLoad1;
     private void buildPaths() {
-        // Path from blueLongStart to blueLongLoad
-        preloadToLoad = follower.pathBuilder()
-                .addPath(AutonConstants.blueLongLoadPath(AutonConstants.blueLongStart))
-                .build();
 
-        // Path from blueLongLoad to blueLongScore
-        loadToScore = follower.pathBuilder()
-                .addPath(AutonConstants.blueLongScorePath(AutonConstants.blueLongLoad))
-                .build();
+        scorePreload = new Path(new BezierLine(AutonConstants.redLongStart, AutonConstants.redLongLoad));
+        scorePreload.setLinearHeadingInterpolation(AutonConstants.redLongStart.getHeading(), AutonConstants.redLongLoad.getHeading());
+
+        redLongLoad1 = new Path(new BezierLine(AutonConstants.redLongLoad, AutonConstants.redLongScore));
+        redLongLoad1.setLinearHeadingInterpolation(AutonConstants.redLongLoad.getHeading(), AutonConstants.redLongScore.getHeading());
+
+        redLongScore1 = new Path(new BezierLine(AutonConstants.redLongScore, AutonConstants.redLongLoad));
+        redLongScore1.setLinearHeadingInterpolation(AutonConstants.redLongScore.getHeading(), AutonConstants.redLongLoad.getHeading());
+
+        redLongLoad2 = new Path(new BezierLine(AutonConstants.redLongLoad, AutonConstants.redLongScore));
+        redLongLoad2.setLinearHeadingInterpolation(AutonConstants.redLongLoad.getHeading(), AutonConstants.redLongScore.getHeading());
     }
 
     @Override
@@ -75,23 +81,32 @@ public class BlueLongShot extends OpMode {
             case 0:
                 // Shoot from blueLongStart
                 shoot();
-                follower.followPath(preloadToLoad, true); // Hold endpoint
+                follower.followPath(scorePreload, true); // Hold endpoint
                 setPathState(1);
                 break;
             case 1:
                 // Wait until at blueLongLoad
                 if (!follower.isBusy()) {
-                    follower.followPath(loadToScore, true); // Hold endpoint
+                    follower.followPath(redLongScore1, true); // Hold endpoint
                     setPathState(2);
                 }
                 break;
             case 2:
                 // Shoot from blueLongScore
                 if (!follower.isBusy()) {
-                    shoot();
-                    setPathState(-1); // Stop
+                    //shoot();
+                    follower.followPath(redLongLoad2, true); // Hold endpoint
+                    setPathState(3); // Stop
                 }
                 break;
+            case 3:
+                // Shoot from blueLongScore
+                if (!follower.isBusy()) {
+                    //shoot();
+                    follower.followPath(redLongLoad1, true); // Hold endpoint
+
+                    setPathState(-1); // Stop
+                }
         }
     }
 
