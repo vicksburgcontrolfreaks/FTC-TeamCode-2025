@@ -39,6 +39,9 @@ public class RobotHardware {
         shooter = hardwareMap.get(DcMotorEx.class, "shooter");
         flipper = hardwareMap.get(Servo.class, "flipper");
 
+        collector.setDirection(DcMotorSimple.Direction.REVERSE);
+        shooter.setDirection(DcMotorSimple.Direction.REVERSE);
+
         // Sensors
         sensor1 = hardwareMap.get(DigitalChannel.class, "sensor1");
         sensor2 = hardwareMap.get(DigitalChannel.class, "sensor2");

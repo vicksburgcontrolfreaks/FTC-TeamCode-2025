@@ -134,4 +134,6 @@ public class AutonConstants {
         path.setLinearHeadingInterpolation(start.getHeading(), redShortScore.getHeading());
         return path;
     }
+    private Path scorePreload;
+
 }
