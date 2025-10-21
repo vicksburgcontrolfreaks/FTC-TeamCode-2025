@@ -9,13 +9,15 @@ import com.pedropathing.paths.Path;
 import com.pedropathing.paths.PathChain;
 import com.pedropathing.util.Timer;
 import org.firstinspires.ftc.teamcode.Auton.AutonConstants;
+
+import java.net.PasswordAuthentication;
 // import com.bylazar.field.FieldManager; // Uncomment if available
 // import com.bylazar.field.PanelsField; // Uncomment if available
 // import com.bylazar.field.Style; // Uncomment if available
 // import org.firstinspires.ftc.teamcode.pedroPathing.Constants; // Uncomment if you have this class
 
-@Autonomous(name = "BlueLongShot", group = "Autonomous")
-public class BlueLongShot extends OpMode {
+@Autonomous(name = "BlueShortShot", group = "Autonomous")
+public class BlueShortShot extends OpMode {
     private Follower follower;
     private Timer pathTimer, opmodeTimer;
     private int pathState;
@@ -34,27 +36,27 @@ public class BlueLongShot extends OpMode {
         // Drawing.init();
 
         telemetry.update();
+
     }
-private Path scorePreload;
-private Path BlueLongLoad1;
-private Path BlueLongScore1;
-private Path BlueLongLoad2;
+    private Path scorePreload;
+    private Path blueSpike3Load;
+    private Path blueShortScore1;
+    private Path blueSpike2load;
 
     private void buildPaths() {
-        scorePreload = new Path(new BezierLine(AutonConstants.blueLongStart, AutonConstants.blueLongLoad));
-        scorePreload.setLinearHeadingInterpolation(AutonConstants.blueLongStart.getHeading(), AutonConstants.blueLongLoad.getHeading());
+        scorePreload = new Path(new BezierLine(AutonConstants.blueShortStart, AutonConstants.blueSpike3));
+        scorePreload.setLinearHeadingInterpolation(AutonConstants.blueShortStart.getHeading(), AutonConstants.blueSpike3.getHeading());
 
-        BlueLongLoad1 = new Path(new BezierLine(AutonConstants.blueLongLoad, AutonConstants.blueLongScore));
-        BlueLongLoad1.setLinearHeadingInterpolation(AutonConstants.blueSpike3.getHeading(), AutonConstants.blueLongScore.getHeading());
+        blueSpike3Load = new Path(new BezierLine(AutonConstants.blueSpike3, AutonConstants.blueShortScore));
+        blueSpike3Load.setLinearHeadingInterpolation(AutonConstants.blueSpike3.getHeading(), AutonConstants.blueShortScore.getHeading());
 
-        BlueLongScore1 = new Path(new BezierLine(AutonConstants.blueLongScore, AutonConstants.blueLongLoad));
-        BlueLongScore1.setLinearHeadingInterpolation(AutonConstants.blueLongScore.getHeading(), AutonConstants.blueLongLoad.getHeading());
+        blueShortScore1 = new Path(new BezierLine(AutonConstants.blueShortScore, AutonConstants.blueSpike2));
+        blueShortScore1.setLinearHeadingInterpolation(AutonConstants.blueShortScore.getHeading(), AutonConstants.blueSpike2.getHeading());
 
-        BlueLongLoad2 = new Path(new BezierLine(AutonConstants.blueLongLoad, AutonConstants.blueLongScore));
-        BlueLongLoad2.setLinearHeadingInterpolation(AutonConstants.blueLongLoad.getHeading(), AutonConstants.blueLongScore.getHeading());
+        blueSpike2load = new Path(new BezierLine(AutonConstants.blueSpike2, AutonConstants.blueShortScore));
+        blueSpike2load.setLinearHeadingInterpolation(AutonConstants.blueSpike2.getHeading(), AutonConstants.blueShortScore.getHeading());
+
     }
-
-
 
     @Override
     public void start() {
