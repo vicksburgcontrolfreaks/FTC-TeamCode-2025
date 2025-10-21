@@ -12,10 +12,10 @@ import org.firstinspires.ftc.teamcode.Auton.AutonConstants;
 // import com.bylazar.field.FieldManager; // Uncomment if available
 // import com.bylazar.field.PanelsField; // Uncomment if available
 // import com.bylazar.field.Style; // Uncomment if available
-// import org.firstinspires.ftc.teamcode.pedroPathing.Constants; // Uncomment if you have this class
+// import org.firstinspires.ftc.teamCode.pedroPathing.Constants; // Uncomment if you have this class
 
-@Autonomous(name = "BlueLongShot", group = "Autonomous")
-public class BlueLongShot extends OpMode {
+@Autonomous(name = "BlueShortShot", group = "Autonomous")
+public class BlueShortShot extends OpMode {
     private Follower follower;
     private Timer pathTimer, opmodeTimer;
     private int pathState;
@@ -36,25 +36,25 @@ public class BlueLongShot extends OpMode {
         telemetry.update();
     }
     private Path scorePreLoad;
-    private Path blueLongScore1;
-    private Path blueLongLoad2;
-    private Path blueLongScore2;
+    private Path blueSpike3Load;
+    private Path blueShortScore1;
+    private Path blueSpike2Load;
 
 
 
 
     private void buildPaths() {
-        scorePreLoad = new Path(new BezierLine(AutonConstants.blueLongStart, AutonConstants.blueLongLoad));
-        scorePreLoad.setLinearHeadingInterpolation(AutonConstants.blueLongStart.getHeading(), AutonConstants.blueLongLoad.getHeading());
+        scorePreLoad = new Path(new BezierLine(AutonConstants.blueShortStart, AutonConstants.blueSpike3));
+        scorePreLoad.setLinearHeadingInterpolation(AutonConstants.blueShortStart.getHeading(), AutonConstants.blueSpike3.getHeading());
 
-        blueLongScore1 = new Path(new BezierLine(AutonConstants.blueLongLoad, AutonConstants.blueLongScore));
-        blueLongScore1.setLinearHeadingInterpolation(AutonConstants.blueLongLoad.getHeading(), AutonConstants.blueLongScore.getHeading());
+        blueSpike3Load = new Path(new BezierLine(AutonConstants.blueSpike3, AutonConstants.blueShortScore));
+        blueSpike3Load.setLinearHeadingInterpolation(AutonConstants.blueSpike3.getHeading(), AutonConstants.blueShortScore.getHeading());
 
-        blueLongLoad2 = new Path(new BezierLine(AutonConstants.blueLongScore, AutonConstants.blueLongLoad));
-        blueLongLoad2.setLinearHeadingInterpolation(AutonConstants.blueLongScore.getHeading(), AutonConstants.blueLongLoad.getHeading());
+        blueShortScore1 = new Path(new BezierLine(AutonConstants.blueShortScore, AutonConstants.blueSpike2));
+        blueShortScore1.setLinearHeadingInterpolation(AutonConstants.blueShortScore.getHeading(), AutonConstants.blueSpike2.getHeading());
 
-        blueLongScore2 = new Path(new BezierLine(AutonConstants.blueLongLoad, AutonConstants.blueLongScore));
-        blueLongScore2.setLinearHeadingInterpolation(AutonConstants.blueLongLoad.getHeading(), AutonConstants.blueLongScore.getHeading());
+        blueSpike2Load = new Path(new BezierLine(AutonConstants.blueSpike2, AutonConstants.blueShortScore));
+        blueSpike2Load.setLinearHeadingInterpolation(AutonConstants.blueSpike2.getHeading(), AutonConstants.blueShortScore.getHeading());
     }
 
     @Override
@@ -90,24 +90,22 @@ public class BlueLongShot extends OpMode {
             case 1:
                 // Wait until at blueLongLoad
                 if (!follower.isBusy()) {
-                    follower.followPath(blueLongScore1, false); // Hold endpoint
+                    follower.followPath(blueSpike3Load, false); // Hold endpoint
                     setPathState(2);
                 }
                 break;
             case 2:
-                // Shoot from blueLongScore
+                // Wait until at blueLongLoad
                 if (!follower.isBusy()) {
-                    //shoot(); temp for testing
-                    follower.followPath(blueLongLoad2, false); // Hold endpoint
-                    setPathState(3); // Stop
+                    follower.followPath(blueShortScore1, false); // Hold endpoint
+                    setPathState(3);
                 }
                 break;
             case 3:
-                // Shoot from blueLongScore
+                // Wait until at blueLongLoad
                 if (!follower.isBusy()) {
-                    //shoot(); temp for testing
-                    follower.followPath(blueLongScore2, true); // Hold endpoint
-                    setPathState(-1); // Stop
+                    follower.followPath(blueSpike2Load, true); // Hold endpoint
+                    setPathState(-1);
                 }
         }
     }
