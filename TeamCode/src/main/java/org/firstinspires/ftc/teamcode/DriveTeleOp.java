@@ -16,8 +16,8 @@ public class DriveTeleOp extends OpMode {
     @Override
     public void init() {
         hardware = new RobotHardware();
-        hardware.init(hardwareMap);
-        shooter = new ShootAprilTag(hardware);
+        hardware.init(hardwareMap, telemetry);
+        shooter = new ShootAprilTag(hardware, follower, telemetry);
         try {
             follower = Constants.createFollower(hardwareMap);
             telemetry.addData("Status", "Follower initialized");
@@ -78,7 +78,7 @@ public class DriveTeleOp extends OpMode {
 
         // Shoot: Gamepad2 B
         if (gamepad2.b) {
-            shooter.shoot(tagId);
+//            shooter.shoot(tagId);
         }
 
         // Update localizer
