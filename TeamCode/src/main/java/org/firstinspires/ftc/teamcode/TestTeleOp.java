@@ -13,7 +13,7 @@ public class TestTeleOp extends OpMode {
     private ShootAprilTag shooter;
     private Follower follower;
     private double collectorRPM = 0.0;
-    private double shooterRPM = 0.0;
+    private double shooterRPM = 1600.0;
     private boolean collectorOn = false;
     private boolean shooterOn = false;
     private int tagId = 20; // Default to Blue alliance
@@ -91,17 +91,18 @@ public class TestTeleOp extends OpMode {
         }
         lastA = gamepad2.a;
         if (collectorOn) {
-            double collectorTicksPerSec = collectorRPM * TICKS_PER_REV * COLLECTOR_GEAR_RATIO / 60.0;
-            hardware.collector.setVelocity(collectorTicksPerSec);
+            hardware.collector.setPower(0.5);
+//            double collectorTicksPerSec = collectorRPM * TICKS_PER_REV * COLLECTOR_GEAR_RATIO / 60.0;
+//            hardware.collector.setVelocity(collectorTicksPerSec);
         } else {
             hardware.collector.setPower(0.0);
         }
 
         // Shooter controls
         if (gamepad2.right_bumper) {
-            shooterRPM = Math.min(shooterRPM + 100, 3000);
+            shooterRPM = Math.min(shooterRPM + 20, 4000);
         } else if (gamepad2.left_bumper) {
-            shooterRPM = Math.max(shooterRPM - 100, 0);
+            shooterRPM = Math.max(shooterRPM - 20, 0);
         }
         if (gamepad2.b && !lastB && debounceTimer.getElapsedTimeSeconds() > DEBOUNCE_TIME) {
             shooterOn = !shooterOn;
@@ -111,6 +112,7 @@ public class TestTeleOp extends OpMode {
         if (shooterOn) {
             double shooterTicksPerSec = shooterRPM * TICKS_PER_REV * SHOOTER_GEAR_RATIO / 60.0;
             hardware.shooter.setVelocity(shooterTicksPerSec);
+//            hardware.shooter.setPower(1.0);
         } else {
             hardware.shooter.setPower(0.0);
         }
@@ -131,9 +133,10 @@ public class TestTeleOp extends OpMode {
         telemetry.addData("Collector RPM", collectorRPM + " (On: " + collectorOn + ")");
         telemetry.addData("Collector Actual RPM",
                 (hardware.collector.getVelocity() / (TICKS_PER_REV * COLLECTOR_GEAR_RATIO)) * 60.0);
-        telemetry.addData("Shooter RPM", shooterRPM + " (On: " + shooterOn + ")");
+//        telemetry.addData("Shooter RPM", shooterRPM + " (On: " + shooterOn + ")");
         telemetry.addData("Shooter Actual RPM",
-                (hardware.shooter.getVelocity() / (TICKS_PER_REV * SHOOTER_GEAR_RATIO)) * 60.0);
+                hardware.shooter.getVelocity());
+        telemetry.addData("shooter pos",hardware.shooter.getCurrentPosition());
         telemetry.addData("Servo Pos", hardware.flipper.getPosition());
         telemetry.addData("Magazine Full", hardware.isMagazineFull());
         telemetry.update();

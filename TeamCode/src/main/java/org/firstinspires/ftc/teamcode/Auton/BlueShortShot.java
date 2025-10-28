@@ -84,8 +84,12 @@ public class BlueShortShot extends OpMode {
         switch (pathState) {
             case 0:
                 // Shoot from blueLongStart
-                shoot();
+//                shoot();
                 follower.followPath(preloadToLoad, true); // Hold endpoint
+
+                //Add a pause and turn on collector
+
+
                 setPathState(1);
                 break;
             case 1:
@@ -102,6 +106,23 @@ public class BlueShortShot extends OpMode {
                     setPathState(-1); // Stop
                 }
                 break;
+
+            case 3:
+                // Shoot from blueLongScore
+                if (!follower.isBusy()) {
+//                    shoot();
+                    setPathState(4); // Stop
+                }
+                break;
+
+            case 4:
+                // Shoot from blueLongScore
+                if (!follower.isBusy()) {
+//                    shoot();
+                    setPathState(-1); // Stop
+                }
+                break;
+
         }
     }
 
@@ -173,9 +194,7 @@ public class BlueShortShot extends OpMode {
                     if (Double.isNaN(points[j][i])) {
                         points[j][i] = 0;
                     }
-                }
-            }
-            panelsField.setStyle(style);
+                }    panelsField.setStyle(style);
             panelsField.moveCursor(points[0][0], points[0][1]);
             panelsField.line(points[1][0], points[1][1]);
         }

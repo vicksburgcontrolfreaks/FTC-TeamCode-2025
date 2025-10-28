@@ -61,15 +61,16 @@ public class DriveTeleOp extends OpMode {
 
         // Collect: Gamepad2 A - run collector until full
         if (gamepad2.a) {
-            if (!hardware.isMagazineFull()) {
+//            if (!hardware.isMagazineFull()) {
                 hardware.collector.setPower(0.5);
-            } else {
+            }
+        else {
                 hardware.collector.setPower(0);
                 telemetry.addData("Magazine", "Full");
             }
-        } else {
-            hardware.collector.setPower(0);
-        }
+//        } else {
+//            hardware.collector.setPower(0);
+//        }
 
         // Auto-align rotation: Gamepad2 Y
         if (gamepad2.y) {
@@ -78,8 +79,18 @@ public class DriveTeleOp extends OpMode {
 
         // Shoot: Gamepad2 B
         if (gamepad2.b) {
-//            shooter.shoot(tagId);
+            hardware.flipper.setPosition(0.5);
         }
+    else {
+        hardware.flipper.setPosition(0);
+        }
+    if (gamepad2.x){
+        hardware.shooter.setPower(1.0);
+    }
+    else {
+        hardware.shooter.setPower(0);
+
+    }
 
         // Update localizer
         follower.update();

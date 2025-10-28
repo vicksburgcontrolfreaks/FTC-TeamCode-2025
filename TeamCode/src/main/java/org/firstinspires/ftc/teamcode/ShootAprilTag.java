@@ -10,10 +10,10 @@ public class ShootAprilTag {
     private RobotHardware hardware;
     private Follower follower;
     private Telemetry telemetry;
-    private static final double TARGET_X = 340.0; // Center of 1280px image (adjust to 540 for 1080p)
+    private static final double TARGET_X = 320.0; // Center of 1280px image (adjust to 540 for 1080p)
     private static final double KP = 1.0; // Proportional gain
-    private static final double TOLERANCE = 20.0; // Pixel tolerance
-    private static final double MAX_ROT_SPEED = 0.3; // Max rotation power
+    private static final double TOLERANCE = 23.0; // Pixel tolerance
+    private static final double MAX_ROT_SPEED = 0.2; // Max rotation power
     private static final double ALIGN_TIMEOUT = 3.0; // Seconds
     private Timer alignTimer;
 
