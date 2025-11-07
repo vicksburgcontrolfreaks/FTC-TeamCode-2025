@@ -1,99 +1,166 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
+import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
+/**
+ * Central hardware wrapper — all motors, servos, sensors, LEDs
+ */
 public class RobotHardware {
-    // Drive motors
-    public DcMotorEx rf, rr, lr, lf;
-    // Mechanisms
-    public DcMotorEx collector;
-    public DcMotorEx shooter;
+
+    // === MOTORS ===
+    public DcMotorEx lf, rf, lr, rr;
+    public DcMotorEx shooter, collector, lWinch, rWinch;
+
+    // === SERVOS ===
     public Servo flipper;
-    // Sensors
-    public DigitalChannel sensor1, sensor2, sensor3;
-    // Vision
+
+    // === SENSORS ===
+    public VoltageSensor batteryVoltageSensor;
+
+    // === VISION ===
     public VisionPortal visionPortal;
     public AprilTagProcessor aprilTagProcessor;
-    // Telemetry
-    private Telemetry telemetry;
 
+    // === LED STRIP ===
+    public RevBlinkinLedDriver leds;
+
+    // === TELEMETRY ===
+    public Telemetry telemetry;
+
+    // === TIMERS ===
+    private final ElapsedTime runtime = new ElapsedTime();
+
+    // === CONFIG NAMES (CHANGE TO MATCH YOUR CONFIG) ===
+    private static final String LF_NAME = "lf";
+    private static final String RF_NAME = "rf";
+    private static final String LR_NAME = "lr";
+    private static final String RR_NAME = "rr";
+    private static final String SHOOTER_NAME = "shooter";
+    private static final String COLLECTOR_NAME = "collector";
+    private static final String LWINCH_NAME = "lWinch";
+    private static final String RWINCH_NAME = "rWinch";
+    private static final String FLIPPER_NAME = "flipper";
+    private static final String LED_NAME = "leds";
+
+    /**
+     * Initialize all hardware
+     */
     public void init(HardwareMap hardwareMap, Telemetry telemetry) {
-        this.telemetry = telemetry; // Initialize telemetry from parameter
+        this.telemetry = telemetry;
 
-        // Drive motors
-        rf = hardwareMap.get(DcMotorEx.class, "rf"); // EH1
-        rr = hardwareMap.get(DcMotorEx.class, "rr"); // EH0
-        lr = hardwareMap.get(DcMotorEx.class, "lr"); // EH3
-        lf = hardwareMap.get(DcMotorEx.class, "lf"); // EH2
+        // === DRIVE MOTORS ===
+        lf = hardwareMap.get(DcMotorEx.class, LF_NAME);
+        rf = hardwareMap.get(DcMotorEx.class, RF_NAME);
+        lr = hardwareMap.get(DcMotorEx.class, LR_NAME);
+        rr = hardwareMap.get(DcMotorEx.class, RR_NAME);
 
-        lf.setDirection(DcMotorSimple.Direction.REVERSE);
-        lr.setDirection(DcMotorSimple.Direction.FORWARD);
-        rf.setDirection(DcMotorSimple.Direction.FORWARD);
-        rr.setDirection(DcMotorSimple.Direction.REVERSE);
+//        lf.setDirection(DcMotor.Direction.REVERSE);
+//        lr.setDirection(DcMotor.Direction.FORWARD);
+//        rf.setDirection(DcMotor.Direction.FORWARD);
+//        rr.setDirection(DcMotor.Direction.REVERSE);
 
-        // Mechanisms
-        collector = hardwareMap.get(DcMotorEx.class, "collector");
-        shooter = hardwareMap.get(DcMotorEx.class, "shooter");
-        flipper = hardwareMap.get(Servo.class, "flipper");
-        collector.setDirection(DcMotorSimple.Direction.REVERSE);
-        shooter.setDirection(DcMotorSimple.Direction.REVERSE);
+        lf.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rf.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        lr.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rr.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        // Configure motors
-        lf.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
-        rf.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
-        lr.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
-        rr.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
-        collector.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
-        shooter.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+        // === SHOOTER & COLLECTOR ===
+        shooter = hardwareMap.get(DcMotorEx.class, SHOOTER_NAME);
+        collector = hardwareMap.get(DcMotorEx.class, COLLECTOR_NAME);
 
-        // Sensors
-        sensor1 = hardwareMap.get(DigitalChannel.class, "sensor1");
-        sensor2 = hardwareMap.get(DigitalChannel.class, "sensor2");
-        sensor3 = hardwareMap.get(DigitalChannel.class, "sensor3");
-        sensor1.setMode(DigitalChannel.Mode.INPUT);
-        sensor2.setMode(DigitalChannel.Mode.INPUT);
-        sensor3.setMode(DigitalChannel.Mode.INPUT);
+        shooter.setDirection(DcMotor.Direction.REVERSE);
 
-        // AprilTag vision
-        aprilTagProcessor = AprilTagProcessor.easyCreateWithDefaults();
-        visionPortal = VisionPortal.easyCreateWithDefaults(
-                hardwareMap.get(WebcamName.class, "Webcam 1"), aprilTagProcessor);
+        shooter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        collector.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        collector.setTargetPositionTolerance(30);
 
-        telemetry.addData("Hardware Status", "Initialized");
-        telemetry.update();
+        shooter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+        collector.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        // === FLIPPER SERVO ===
+        flipper = hardwareMap.get(Servo.class, FLIPPER_NAME);
+        flipper.setDirection(Servo.Direction.FORWARD);
+
+        // === LIFT SYSTEM ===
+        lWinch = hardwareMap.get(DcMotorEx.class, LWINCH_NAME);
+        rWinch = hardwareMap.get(DcMotorEx.class, RWINCH_NAME);
+
+        lWinch.setDirection(DcMotorSimple.Direction.REVERSE);
+        rWinch.setDirection(DcMotorSimple.Direction.FORWARD);
+
+        lWinch.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rWinch.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        lWinch.setTargetPositionTolerance(30);
+        lWinch.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        lWinch.setTargetPosition(0);
+        lWinch.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        rWinch.setTargetPositionTolerance(30);
+        rWinch.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rWinch.setTargetPosition(0);
+        rWinch.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        // === LED STRIP ===
+//        try {
+            leds = hardwareMap.get(RevBlinkinLedDriver.class, LED_NAME);
+//            leds.setPattern(RevBlinkinLedDriver.BlinkinPattern.RAINBOW_WITH_GLITTER);
+//            addTelemetry("LED", "Initialized");
+//        } catch (Exception e) {
+//            leds = null;
+//            addTelemetry("LED", "NOT FOUND: " + e.getMessage());
+//        }
+
+        // === VISION (AprilTags) ===
+        aprilTagProcessor = new AprilTagProcessor.Builder().build();
+        visionPortal = VisionPortal.easyCreateWithDefaults(hardwareMap.get(WebcamName.class, "Webcam 1"), aprilTagProcessor);
+
+        // === VOLTAGE SENSOR ===
+        batteryVoltageSensor = hardwareMap.voltageSensor.iterator().next();
+
+        addTelemetry("Status", "Hardware Initialized");
     }
 
-    public boolean isMagazineFull() {
-        boolean full = !sensor1.getState() && !sensor2.getState() && !sensor3.getState();
-        telemetry.addData("Magazine Full", full);
-        telemetry.update();
-        return full;
+    /**
+     * Safe telemetry add (won't crash if telemetry is null)
+     */
+    public void addTelemetry(String key, String format, Object... args) {
+        if (telemetry != null) {
+            telemetry.addData(key, format, args);
+        }
     }
 
-    public Telemetry getTelemetry() {
-        return telemetry;
+    public void addTelemetry(String key, String value) {
+        if (telemetry != null) {
+            telemetry.addData(key, value);
+        }
     }
 
-    public void addTelemetry(String caption, String value) {
-        telemetry.addData(caption, value);
-        telemetry.update();
+    /**
+     * Get battery voltage
+     */
+    public double getBatteryVoltage() {
+        return batteryVoltageSensor.getVoltage();
     }
 
-    public void addTelemetry(String caption, double value) {
-        telemetry.addData(caption, value);
-        telemetry.update();
+    /**
+     * Reset runtime timer
+     */
+    public void resetRuntime() {
+        runtime.reset();
     }
 
-    public void addTelemetry(String caption, boolean value) {
-        telemetry.addData(caption, value);
-        telemetry.update();
+    public double getRuntime() {
+        return runtime.seconds();
     }
 }

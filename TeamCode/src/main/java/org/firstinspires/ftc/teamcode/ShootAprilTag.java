@@ -10,11 +10,12 @@ public class ShootAprilTag {
     private RobotHardware hardware;
     private Follower follower;
     private Telemetry telemetry;
-    private static final double TARGET_X = 320.0; // Center of 1280px image (adjust to 540 for 1080p)
-    private static final double KP = 1.0; // Proportional gain
-    private static final double TOLERANCE = 23.0; // Pixel tolerance
-    private static final double MAX_ROT_SPEED = 0.2; // Max rotation power
-    private static final double ALIGN_TIMEOUT = 3.0; // Seconds
+    private boolean enableTelemetry = true;          // <<< NEW toggle
+    private static final double TARGET_X = 320.0;
+    private static final double KP = 1.0;
+    private static final double TOLERANCE = 23.0;
+    private static final double MAX_ROT_SPEED = 0.2;
+    private static final double ALIGN_TIMEOUT = 3.0;
     private Timer alignTimer;
 
     public ShootAprilTag(RobotHardware hardware, Follower follower, Telemetry telemetry) {
@@ -24,20 +25,24 @@ public class ShootAprilTag {
         this.alignTimer = new Timer();
     }
 
-    public void alignRotationOnly(int tagId) {
-        alignTimer.resetTimer(); // Reset timer at start
+    // ---- optional setter -------------------------------------------------
+    public void setTelemetryEnabled(boolean enabled) {
+        this.enableTelemetry = enabled;
+    }
+    // ---------------------------------------------------------------------
 
-        double currentX = -1.0; // Default value if no tag detected
-        double error = 0.0; // Default error
-        double rotationPower = 0.0; // Default rotation power
+    public void alignRotationOnly(int tagId) {
+        alignTimer.resetTimer();
+        double currentX = -1.0;
+        double error = 0.0;
+        double rotationPower = 0.0;
 
         if (alignTimer.getElapsedTimeSeconds() > ALIGN_TIMEOUT) {
             stopMotors();
-            telemetry.addData("Tag Status", "Alignment timed out");
+            if (enableTelemetry) telemetry.addData("Tag Status", "Alignment timed out");
         } else {
             List<AprilTagDetection> detections = hardware.aprilTagProcessor.getDetections();
             AprilTagDetection targetTag = null;
-
             for (AprilTagDetection detection : detections) {
                 if (detection.id == tagId) {
                     targetTag = detection;
@@ -47,19 +52,18 @@ public class ShootAprilTag {
 
             if (targetTag == null) {
                 stopMotors();
-                telemetry.addData("Tag Status", "Tag ID " + tagId + " not detected");
+                if (enableTelemetry) telemetry.addData("Tag Status", "Tag ID " + tagId + " not detected");
             } else {
-                currentX = targetTag.center.x; // Pixel x-coordinate
-                error = TARGET_X - currentX; // Positive error = tag is left, rotate CCW
+                currentX = targetTag.center.x;
+                error = TARGET_X - currentX;
 
                 if (Math.abs(error) < TOLERANCE) {
                     stopMotors();
-                    telemetry.addData("Tag Status", "Centered (X: " + currentX + ")");
+                    if (enableTelemetry) telemetry.addData("Tag Status", "Centered (X: " + currentX + ")");
                     alignTimer.resetTimer();
                 } else {
                     rotationPower = KP * error;
                     rotationPower = Math.max(-MAX_ROT_SPEED, Math.min(MAX_ROT_SPEED, rotationPower));
-
                     double heading = (follower != null && follower.getPose() != null) ? follower.getPose().getHeading() : 0.0;
                     hardware.lf.setPower(-rotationPower);
                     hardware.rf.setPower(rotationPower);
@@ -69,17 +73,20 @@ public class ShootAprilTag {
             }
         }
 
-        // Telemetry during alignment
-        telemetry.addData("Tag X", currentX);
-        telemetry.addData("Error", error);
-        telemetry.addData("Rotation Power", rotationPower);
-        telemetry.addData("Follower Status", follower != null ? "Initialized" : "Null");
-        telemetry.addData("Timer", alignTimer.getElapsedTimeSeconds());
-        telemetry.update();
+        // ---- telemetry block ------------------------------------------------
+        if (enableTelemetry) {
+            telemetry.addData("Tag X", currentX);
+            telemetry.addData("Error", error);
+            telemetry.addData("Rotation Power", rotationPower);
+            telemetry.addData("Follower Status", follower != null ? "Initialized" : "Null");
+            telemetry.addData("Timer", alignTimer.getElapsedTimeSeconds());
+            telemetry.update();
+        }
+        // --------------------------------------------------------------------
     }
 
     public void updateTelemetry(int tagId) {
-        double currentX = -1.0; // Default if no tag detected
+        double currentX = -1.0;
         List<AprilTagDetection> detections = hardware.aprilTagProcessor.getDetections();
         AprilTagDetection targetTag = null;
 
@@ -93,16 +100,20 @@ public class ShootAprilTag {
         }
 
         if (targetTag != null) {
-            currentX = targetTag.center.x; // Pixel x-coordinate
-            telemetry.addData("Tag Status", "Tag ID " + tagId + " detected");
+            currentX = targetTag.center.x;
+            if (enableTelemetry) telemetry.addData("Tag Status", "Tag ID " + tagId + " detected");
         } else {
-            telemetry.addData("Tag Status", "Tag ID " + tagId + " not detected");
+            if (enableTelemetry) telemetry.addData("Tag Status", "Tag ID " + tagId + " not detected");
         }
 
-        // Continuous telemetry
-        telemetry.addData("Tag X", currentX);
-        telemetry.addData("Detections Count", detections != null ? detections.size() : 0);
-        telemetry.addData("Camera State", hardware.visionPortal.getCameraState());
+        // ---- telemetry block ------------------------------------------------
+        if (enableTelemetry) {
+            telemetry.addData("Tag X", currentX);
+            telemetry.addData("Detections Count", detections != null ? detections.size() : 0);
+            telemetry.addData("Camera State", hardware.visionPortal.getCameraState());
+            // note: update() is usually called outside this method
+        }
+        // --------------------------------------------------------------------
     }
 
     private void stopMotors() {
@@ -113,14 +124,10 @@ public class ShootAprilTag {
     }
 
     public void stopVision() {
-        if (hardware.visionPortal != null) {
-            hardware.visionPortal.stopStreaming();
-        }
+        if (hardware.visionPortal != null) hardware.visionPortal.stopStreaming();
     }
 
     public void startVision() {
-        if (hardware.visionPortal != null) {
-            hardware.visionPortal.resumeStreaming();
-        }
+        if (hardware.visionPortal != null) hardware.visionPortal.resumeStreaming();
     }
 }

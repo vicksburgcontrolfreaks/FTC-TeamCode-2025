@@ -1,19 +1,25 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- FTC Robot Configuration File -->
-<RobotConfiguration>
-    <!-- Drive Motors -->
-    <Motor name="lf" type="MotorType.REV_HD_20_1" port="0" motorControllerType="MotorControllerType.REV_HUB_MOTOR" moduleNumber="0" />
-    <Motor name="rf" type="MotorType.REV_HD_20_1" port="1" motorControllerType="MotorControllerType.REV_HUB_MOTOR" moduleNumber="0" />
-    <Motor name="lr" type="MotorType.REV_HD_20_1" port="2" motorControllerType="MotorControllerType.REV_HUB_MOTOR" moduleNumber="0" />
-    <Motor name="rr" type="MotorType.REV_HD_20_1" port="3" motorControllerType="MotorControllerType.REV_HUB_MOTOR" moduleNumber="0" />
-
-    <!-- Odometry Encoders (if using two-wheel odometry) -->
-    <AnalogInput name="leftOdo" type="AnalogInputType.INPUT" port="0" moduleNumber="0" />
-    <AnalogInput name="rightOdo" type="AnalogInputType.INPUT" port="1" moduleNumber="0" />
-
-    <!-- Servo for example (add more as needed) -->
-    <Servo name="exampleServo" type="ServoType.STANDARD" port="0" motorControllerType="MotorControllerType.REV_HUB_SERVO" moduleNumber="1" />
-
-    <!-- AprilTag Camera (Webcam) -->
-    <Device name="webcam" type="DeviceType.WEBCAM" port="0" moduleNumber="0" />
-</RobotConfiguration>
+<Robot type="FirstInspires-FTC">
+    <LynxUsbDevice name="Control Hub Portal" serialNumber="(embedded)" parentModuleAddress="173">
+        <LynxModule name="Expansion Hub 4" port="4">
+            <RevRoboticsUltraplanetaryHDHexMotor name="rr" port="0"/>
+            <RevRoboticsUltraplanetaryHDHexMotor name="rf" port="1"/>
+            <RevRoboticsUltraplanetaryHDHexMotor name="lf" port="2"/>
+            <RevRoboticsUltraplanetaryHDHexMotor name="lr" port="3"/>
+            <LynxEmbeddedIMU name="imu" port="0" bus="0"/>
+        </LynxModule>
+        <LynxModule name="Control Hub" port="173">
+            <RevRoboticsUltraplanetaryHDHexMotor name="collector" port="0"/>
+            <RevRoboticsUltraplanetaryHDHexMotor name="shooter" port="1"/>
+            <RevRoboticsUltraplanetaryHDHexMotor name="lWinch" port="2"/>
+            <RevRoboticsUltraplanetaryHDHexMotor name="rWinch" port="3"/>
+            <RevBlinkinLedDriver name="leds" port="0"/>
+            <Servo name="flipper" port="5"/>
+            <DigitalDevice name="sensor1" port="0"/>
+            <DigitalDevice name="sensor2" port="1"/>
+            <DigitalDevice name="sensor3" port="2"/>
+            <goBILDAPinpoint name="pinpoint" port="0" bus="1"/>
+        </LynxModule>
+    </LynxUsbDevice>
+    <!--Webcam name="Webcam 1" serialNumber="9762FD40" /-->
+    <Webcam name="Webcam 1" serialNumber="ACNV9P1F17303332"/>
+</Robot>

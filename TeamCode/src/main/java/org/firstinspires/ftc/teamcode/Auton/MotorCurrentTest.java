@@ -88,7 +88,6 @@ public class MotorCurrentTest extends LinearOpMode {
         telemetry.addData("Left Rear Avg Current", lrAverage);
         telemetry.addData("Status", "Test complete");
         telemetry.update();
-
         // Keep telemetry on screen until opmode stops
         while (opModeIsActive()) {
             sleep(100);
