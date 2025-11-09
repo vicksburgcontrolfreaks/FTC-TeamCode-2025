@@ -16,7 +16,7 @@ public class ThreeShotSequence extends OpMode {
     private double preVelocity = 0;
     private double postVelocity = 0;
     private int currentShot = 0;
-    private int setVelocity = 1500;
+    private int setVelocity = 1700;
 
     @Override public void init() {
         hardware = new RobotHardware();
@@ -24,6 +24,7 @@ public class ThreeShotSequence extends OpMode {
         shooter = new ShootAprilTag(hardware, follower, telemetry);
         follower = Constants.createFollower(hardwareMap);
         telemetry.addData("3-SHOT", "Press Play → B");
+        hardware.flipper.setPosition(0);
     }
 
     @Override public void loop() {
@@ -43,7 +44,7 @@ public class ThreeShotSequence extends OpMode {
         telemetry.addData("Shooter", "%.0f / 1600", vel);
 
         // WAIT FOR SPEED
-        if (bPressed && vel > setVelocity - 50) {
+        if (bPressed && vel > setVelocity - 25) {
             if (shot == 0) flipAndNext();               // Shot 1
             else indexAndWait();                        // Shot 2 & 3
         }
@@ -53,27 +54,27 @@ public class ThreeShotSequence extends OpMode {
             flipAndNext();
         }
 
-        telemetry.addData("Shot", shot + 1);
+        telemetry.addData("Shot", shot);
         telemetry.addData("Collector Pos", hardware.collector.getCurrentPosition());
     }
 
     private void flipAndNext() {
-        preVelocity = hardware.shooter.getVelocity();   // ← PRE-SHOT
+        preVelocity = hardware.shooter.getVelocity();
         hardware.flipper.setPosition(0.5);
         sleep(250);
-        hardware.flipper.setPosition(0.0);
-        postVelocity = hardware.shooter.getVelocity();  // ← POST-SHOT
-        currentShot = shot + 1;                         // ← SHOT NUMBER
+        hardware.flipper.setPosition(0.0);   // ← FLIP BACK HERE
+        postVelocity = hardware.shooter.getVelocity();
+        currentShot = shot + 1;
         telemetry.addData("SHOT %d", currentShot);
         telemetry.addData("  Pre", "%.0f", preVelocity);
         telemetry.addData("  Post", "%.0f", postVelocity);
         shot++;
+
         if (shot < 3) {
             bPressed = true;
-            // COLLECTOR STAYS ON
         } else {
             hardware.shooter.setPower(0);
-            hardware.flipper.setPosition(0.0);
+            hardware.flipper.setPosition(0.0);   // ← EXTRA RESET (safety)
         }
     }
 
@@ -81,7 +82,7 @@ public class ThreeShotSequence extends OpMode {
         int target = hardware.collector.getCurrentPosition() + 500;
         hardware.collector.setTargetPosition(target);
         hardware.collector.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
-        hardware.collector.setPower(0.9);
+        hardware.collector.setPower(0.4);
         telemetry.addData("INDEX", "+500");
         bPressed = false;                 // wait for isBusy()
     }

@@ -51,10 +51,18 @@ public class SpeedTestTeleOp extends OpMode {
 
 
         // TELEMETRY
+        int current = shotSeq.getCurrentShot();
+
         telemetry.addData("Set Speed", speed);
-        telemetry.addData("Shot", shotSeq.getCurrentShot());
-        telemetry.addData("Pre", "%.0f", shotSeq.getPreVelocity());
-        telemetry.addData("Post", "%.0f", shotSeq.getPostVelocity());
+        telemetry.addData("Shot", current);
+
+        if (current > 0) {
+            telemetry.addData("Pre",  "%.0f", shotSeq.getPreVelocity(current));
+            telemetry.addData("Post", "%.0f", shotSeq.getPostVelocity(current));
+        } else {
+            telemetry.addData("Pre",  "—");
+            telemetry.addData("Post", "—");
+        }
 
         double reported = 0;
         for (AprilTagDetection d : hardware.aprilTagProcessor.getDetections()) {
