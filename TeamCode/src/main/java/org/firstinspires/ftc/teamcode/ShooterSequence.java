@@ -2,9 +2,8 @@ package org.firstinspires.ftc.teamcode;
 
 import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
-import com.qualcomm.robotcore.hardware.Servo;
+
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
@@ -20,7 +19,7 @@ import java.util.List;
 public class ShooterSequence {
 
     private final RobotHardware hardware;
-    private final ShootAprilTag aligner;
+    private final AlignAprilTag aligner;
     private final Timer stateTimer = new Timer();
     private final Timer flashTimer = new Timer();
 
@@ -49,7 +48,7 @@ public class ShooterSequence {
     // PID – P=5.0 is strong & fast
     private static final double P = 30.0, I = 0.0, D = 0.01, F = 0.0;
 
-    public ShooterSequence(RobotHardware hardware, ShootAprilTag aligner) {
+    public ShooterSequence(RobotHardware hardware, AlignAprilTag aligner) {
         this.hardware = hardware;
         this.aligner = aligner;
 

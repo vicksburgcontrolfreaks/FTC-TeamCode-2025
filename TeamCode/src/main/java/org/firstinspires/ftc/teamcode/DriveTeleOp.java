@@ -1,7 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.pedropathing.follower.Follower;
-import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
@@ -9,7 +8,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 @TeleOp(name = "DriveTeleOp", group = "TeleOp")
 public class DriveTeleOp extends OpMode {
     private RobotHardware hardware;
-    private ShootAprilTag shooter;
+    private AlignAprilTag shooter;
     private Follower follower;
     private int tagId = 20; // Default to blue alliance (ID 20)
 
@@ -17,7 +16,7 @@ public class DriveTeleOp extends OpMode {
     public void init() {
         hardware = new RobotHardware();
         hardware.init(hardwareMap, telemetry);
-        shooter = new ShootAprilTag(hardware, follower, telemetry);
+        shooter = new AlignAprilTag(hardware, follower, telemetry);
         try {
             follower = Constants.createFollower(hardwareMap);
             telemetry.addData("Status", "Follower initialized");

@@ -9,7 +9,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 @TeleOp(name="3-SHOT HARDWARE", group="Tests")
 public class ThreeShotSequence extends OpMode {
     RobotHardware hardware;
-    ShootAprilTag shooter;
+    AlignAprilTag shooter;
     private Follower follower;
     boolean bPressed = false;
     int shot = 0;               // 0,1,2
@@ -21,7 +21,7 @@ public class ThreeShotSequence extends OpMode {
     @Override public void init() {
         hardware = new RobotHardware();
         hardware.init(hardwareMap, telemetry);
-        shooter = new ShootAprilTag(hardware, follower, telemetry);
+        shooter = new AlignAprilTag(hardware, follower, telemetry);
         follower = Constants.createFollower(hardwareMap);
         telemetry.addData("3-SHOT", "Press Play → B");
         hardware.flipper.setPosition(0);

@@ -9,7 +9,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 public class AlignTuneOpMode extends OpMode {
 
     private RobotHardware hardware;
-    private ShootAprilTag aligner;
+    private AlignAprilTag aligner;
     private Follower follower;
 
     // === TUNING PARAMETERS (Adjust in init_loop) ===
@@ -34,7 +34,7 @@ public class AlignTuneOpMode extends OpMode {
             telemetry.addData("Error", "Follower failed: " + e.getMessage());
         }
 
-        aligner = new ShootAprilTag(hardware, follower, telemetry);
+        aligner = new AlignAprilTag(hardware, follower, telemetry);
         aligner.setTelemetryEnabled(true);
 
         telemetry.addData("TUNE MODE", "Use Gamepad2 to adjust");

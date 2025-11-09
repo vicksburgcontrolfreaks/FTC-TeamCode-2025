@@ -7,7 +7,7 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
 import java.util.List;
 
-public class ShootAprilTag {
+public class AlignAprilTag {
     private final RobotHardware hardware;
     private final Follower follower;
     private final Telemetry telemetry;
@@ -16,15 +16,15 @@ public class ShootAprilTag {
     private boolean isAligning = false;
 
     // === TUNABLE ALIGNMENT PARAMETERS ===
-    private double TARGET_X = 320.0;
-    private double kp = 1.0;
-    private double maxSpeed = 0.2;
-    private double tolerance = 23.0;
+    private double TARGET_X = 660.0;
+    private double kp = 0.8;
+    private double maxSpeed = 0.3;
+    private double tolerance = 30.0;
     private double timeoutSec = 3.0;
 
     private final Timer alignTimer = new Timer();
 
-    public ShootAprilTag(RobotHardware hardware, Follower follower, Telemetry telemetry) {
+    public AlignAprilTag(RobotHardware hardware, Follower follower, Telemetry telemetry) {
         this.hardware = hardware;
         this.follower = follower;
         this.telemetry = telemetry;
@@ -83,12 +83,12 @@ public class ShootAprilTag {
         }
 
         // Apply rotation
-        double rotationPower = kp * error;
+        double rotationPower = -kp * error;
         rotationPower = Math.max(-maxSpeed, Math.min(maxSpeed, rotationPower));
 
         hardware.lf.setPower( rotationPower);
-        hardware.rf.setPower( rotationPower);
-        hardware.lr.setPower(-rotationPower);
+        hardware.rf.setPower(-rotationPower);
+        hardware.lr.setPower( rotationPower);
         hardware.rr.setPower(-rotationPower);
 
         // Telemetry

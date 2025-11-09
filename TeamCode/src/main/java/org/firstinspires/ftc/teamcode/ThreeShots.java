@@ -30,10 +30,12 @@ public class ThreeShots {
     // --------------------------  STATE  --------------------------------- //
     // --------------------------------------------------------------------- //
     private final RobotHardware hardware;
-    private final ShootAprilTag   shooter;
+    private final AlignAprilTag aligner;
+
+    private static final int TAG_ID = 20;  // or 24 for red
 
     private boolean bPressed   = false;   // true while sequence is running
-    private int     shot       = 0;       // 0,1,2
+    public int     shot       = 0;       // 0,1,2
     private int     currentShot = 0;
 
     // store every shot so you can read it later
@@ -47,7 +49,7 @@ public class ThreeShots {
     // --------------------------------------------------------------------- //
     public ThreeShots(RobotHardware hardware) {
         this.hardware = hardware;
-        this.shooter  = new ShootAprilTag(hardware, null, hardware.telemetry);
+        this.aligner  = new AlignAprilTag(hardware, null, hardware.telemetry);
         hardware.flipper.setPosition(0.0);
     }
 
@@ -68,24 +70,21 @@ public class ThreeShots {
 
     /** Call every loop (auto or teleop). */
     public void update(int tagId) {
-        if (!bPressed && shot == 0) return;          // nothing to do
+        // STOP AFTER SHOT 3
+        if (shot >= 3) return;
 
-        // ---- auto-aim while shooting ------------------------------------
         if (bPressed || shot > 0) {
-            shooter.alignRotationOnly(tagId);
+            aligner.alignRotationOnly(tagId);
         }
 
         double vel = hardware.shooter.getVelocity();
 
-        // ---- first shot – wait for spin-up -------------------------------
         if (shot == 0 && vel > SET_VELOCITY - VELOCITY_TOLERANCE) {
+            flipAndNext();
+        } else if (shot > 0 && !hardware.collector.isBusy()) {
             flipAndNext();
         }
 
-        // ---- shots 2 & 3 – wait for index to finish --------------------
-        else if (shot > 0 && !hardware.collector.isBusy()) {
-            flipAndNext();
-        }
 
         // ---- live telemetry (optional) ----------------------------------
         if (enableTelemetry) {
@@ -98,6 +97,7 @@ public class ThreeShots {
     /** True while the burst is still running. */
     public boolean isBusy() {
         return bPressed || shot > 0;
+
     }
 
     /** Turn telemetry on/off (default = on). */
@@ -129,7 +129,6 @@ public class ThreeShots {
     // --------------------------------------------------------------------- //
 
     private void flipAndNext() {
-        // ---- capture pre-velocity ----------------------------------------
         double pre = hardware.shooter.getVelocity();
         preVelocities[shot] = pre;
 
@@ -138,12 +137,14 @@ public class ThreeShots {
             hardware.telemetry.addData("  Pre", "%.0f", pre);
         }
 
-        // ---- flip -------------------------------------------------------
+        // AUTO-ALIGN
+        aligner.alignRotationOnly(TAG_ID);
+
+        // FLIP
         hardware.flipper.setPosition(0.5);
         sleep(FLIP_TIME_MS);
         hardware.flipper.setPosition(0.0);
 
-        // ---- capture post-velocity ---------------------------------------
         double post = hardware.shooter.getVelocity();
         postVelocities[shot] = post;
 
@@ -151,24 +152,27 @@ public class ThreeShots {
             hardware.telemetry.addData("  Post", "%.0f", post);
         }
 
-        shot++;
-        currentShot = shot;
-
-        // ---- index for next shot (except after the last) ----------------
-        if (shot < 3) {
-            indexAndWait();
+        // ——— ONLY INCREMENT IF NOT LAST SHOT ———
+        if (shot < 2) {  // shot = 0 or 1 → becomes 1 or 2
+            shot++;
+            currentShot = shot;
+            indexAndWait();  // Only for shots 1 and 2
         } else {
-            // last shot – stop shooter, leave collector running
+            // LAST SHOT (shot == 2)
+            shot = 3;  // Mark complete
+            currentShot = 3;
             hardware.shooter.setPower(0);
-            hardware.flipper.setPosition(0);
+            hardware.flipper.setPosition(0.0);
+            // RESET COLLECTOR MODE
+            hardware.collector.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+            hardware.collector.setPower(0.0);
             if (enableTelemetry) {
                 hardware.telemetry.addData("3-SHOT", "COMPLETE");
-                hardware.telemetry.addData("Shot 1", "Pre %.0f  Post %.0f",
-                        getPreVelocity(1), getPostVelocity(1));
-                hardware.telemetry.addData("Shot 2", "Pre %.0f  Post %.0f",
-                        getPreVelocity(2), getPostVelocity(2));
-                hardware.telemetry.addData("Shot 3", "Pre %.0f  Post %.0f",
-                        getPreVelocity(3), getPostVelocity(3));
+                for (int i = 1; i <= 3; i++) {
+                    hardware.telemetry.addData("Shot %d", i);
+                    hardware.telemetry.addData("  Pre",  "%.0f", getPreVelocity(i));
+                    hardware.telemetry.addData("  Post", "%.0f", getPostVelocity(i));
+                }
             }
         }
     }
@@ -187,5 +191,23 @@ public class ThreeShots {
 
     private void sleep(long ms) {
         try { Thread.sleep(ms); } catch (Exception ignored) {}
+    }
+
+    public void interrupt() {
+        if (shot >= 3) return;  // Already done
+
+        // STOP EVERYTHING
+        hardware.shooter.setPower(0);
+        hardware.flipper.setPosition(0.0);
+        hardware.collector.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+        hardware.collector.setPower(0.0);
+
+        // RESET STATE
+        shot = 0;
+        bPressed = false;
+
+        if (enableTelemetry) {
+            hardware.telemetry.addData("3-SHOT", "INTERRUPTED");
+        }
     }
 }

@@ -6,13 +6,13 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.RobotHardware;
-import org.firstinspires.ftc.teamcode.ShootAprilTag;
+import org.firstinspires.ftc.teamcode.AlignAprilTag;
 
 @Autonomous(name = "AUTO: 3-Shot Test", group = "Tests")
 public class ThreeShotAuto extends LinearOpMode {
 
     private RobotHardware hardware;
-    private ShootAprilTag shooter;
+    private AlignAprilTag shooter;
     private final ElapsedTime runtime = new ElapsedTime();
 
     private int shot = 0;                    // 0,1,2
@@ -33,7 +33,7 @@ public class ThreeShotAuto extends LinearOpMode {
         // === INIT ===
         hardware = new RobotHardware();
         hardware.init(hardwareMap, telemetry);
-        shooter = new ShootAprilTag(hardware, null, telemetry);  // follower not needed
+        shooter = new AlignAprilTag(hardware, null, telemetry);  // follower not needed
 
         hardware.flipper.setPosition(0.0);
         telemetry.addData("STATUS", "Initialized — Waiting for Start");

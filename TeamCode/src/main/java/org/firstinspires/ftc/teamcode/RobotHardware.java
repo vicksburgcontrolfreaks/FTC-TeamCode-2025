@@ -31,6 +31,7 @@ public class RobotHardware {
     // === VISION ===
     public VisionPortal visionPortal;
     public AprilTagProcessor aprilTagProcessor;
+    private static final double CAMERA_FOV_DEG = 78.0;  // Anker C200 default
 
     // === LED STRIP ===
     public RevBlinkinLedDriver leds;
@@ -65,10 +66,10 @@ public class RobotHardware {
         lr = hardwareMap.get(DcMotorEx.class, LR_NAME);
         rr = hardwareMap.get(DcMotorEx.class, RR_NAME);
 
-//        lf.setDirection(DcMotor.Direction.REVERSE);
-//        lr.setDirection(DcMotor.Direction.FORWARD);
-//        rf.setDirection(DcMotor.Direction.FORWARD);
-//        rr.setDirection(DcMotor.Direction.REVERSE);
+        lf.setDirection(DcMotor.Direction.REVERSE);
+        lr.setDirection(DcMotor.Direction.REVERSE);
+        rf.setDirection(DcMotor.Direction.FORWARD);
+        rr.setDirection(DcMotor.Direction.FORWARD);
 
         lf.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rf.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -122,14 +123,25 @@ public class RobotHardware {
 //        }
 
         // === VISION (AprilTags) ===
+        // Anker C200: 78° FOV → fx = (width/2) / tan(FOV/2)
+        double fx = (1280 / 2) / Math.tan(Math.toRadians(CAMERA_FOV_DEG / 2));
+        double fy = fx;  // assume square pixels
+        double cx = 1280 / 2;
+        double cy = 720 / 2;
         aprilTagProcessor = new AprilTagProcessor.Builder()
                 // == CAMERA CALIBRATION ==
                 // If you do not manually specify calibration parameters, the SDK will attempt
                 // to load a predefined calibration for your camera.
-                //.setLensIntrinsics(578.272, 578.272, 402.145, 221.506)
+                .setLensIntrinsics(fx, fy, cx, cy)
                 // ... these parameters are fx, fy, cx, cy.
                 .build();
-        visionPortal = VisionPortal.easyCreateWithDefaults(hardwareMap.get(WebcamName.class, "Webcam 1"), aprilTagProcessor);
+        visionPortal = new VisionPortal.Builder()
+                .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))  // Change name if needed
+                .addProcessor(aprilTagProcessor)
+                .setCameraResolution(new android.util.Size(1280, 720))  // 720p
+                .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
+                .setAutoStopLiveView(true)
+                .build();
 
         // === VOLTAGE SENSOR ===
         batteryVoltageSensor = hardwareMap.voltageSensor.iterator().next();

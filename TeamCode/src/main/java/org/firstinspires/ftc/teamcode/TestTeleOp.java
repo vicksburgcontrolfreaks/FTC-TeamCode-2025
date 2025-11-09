@@ -5,7 +5,13 @@ import com.pedropathing.util.Timer;
 import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
+
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
+
+import java.util.List;
 
 @TeleOp(name = "TestTeleOp", group = "TeleOp")
 public class TestTeleOp extends OpMode {
@@ -14,7 +20,7 @@ public class TestTeleOp extends OpMode {
     // ---------------------------  HARDWARE  ------------------------------ //
     // --------------------------------------------------------------------- //
     private RobotHardware hardware;
-    private ShootAprilTag   shooter;      // only for manual Y-align
+    private AlignAprilTag shooter;      // only for manual Y-align
     private Follower      follower;
 
     // --------------------------------------------------------------------- //
@@ -57,13 +63,14 @@ public class TestTeleOp extends OpMode {
         // ----- follower (field-centric drive) -----
         try {
             follower = Constants.createFollower(hardwareMap);
+            follower.getPose().setHeading(0.0);  // Force unknown
             hardware.addTelemetry("Status", "Follower initialized");
         } catch (Exception e) {
             hardware.addTelemetry("Error", "Follower failed: " + e.getMessage());
         }
 
         // ----- alignment helper (Y button) -----
-        shooter = new ShootAprilTag(hardware, follower, telemetry);
+        shooter = new AlignAprilTag(hardware, follower, telemetry);
         shooter.setTelemetryEnabled(false);
 
         // ----- NEW 3-shot burst -----
@@ -85,6 +92,17 @@ public class TestTeleOp extends OpMode {
     public void init_loop() {
         if (gamepad2.dpad_up)   setAlliance(false); // Blue
         if (gamepad2.dpad_down) setAlliance(true);  // Red
+
+        if (follower.getPose().getHeading() == 0.0) {  // First loop or uninitialized
+            AprilTagDetection tag = getBestTag(tagId);
+            if (tag != null && tag.robotPose != null) {
+                double tagYaw = tag.robotPose.getOrientation().getYaw(AngleUnit.RADIANS);
+                double robotHeading = fieldForwardHeading - tagYaw;  // Adjust for alliance
+                follower.getPose().setHeading(robotHeading);
+                telemetry.addData("AUTO HEADING", "Set to %.1f° from Tag %d",
+                        Math.toDegrees(robotHeading), tagId);
+            }
+        }
 
         telemetry.addData("Instructions",
                 "Gamepad2: DPAD Up (Blue) / Down (Red)");
@@ -120,14 +138,20 @@ public class TestTeleOp extends OpMode {
     // --------------------------------------------------------------------- //
     @Override
     public void loop() {
-
         // --------------------------------------------------------------- //
-        // -------------------  MANUAL ALIGN (Y)  ----------------------- //
+        // -----------------------  LOCALIZER  -------------------------- //
         // --------------------------------------------------------------- //
-        if (gamepad1.y) {
-            shooter.alignRotationOnly(tagId);
-            stopDriveMotors();               // no drive while aligning
-            return;                          // skip the rest of the loop
+        follower.update();
+        // AUTO-SET HEADING FROM APRILTAG (ONCE)
+        if (Math.abs(follower.getPose().getHeading()) < 0.01) {  // ~0.0
+            AprilTagDetection tag = getBestTag(tagId);
+            if (tag != null && tag.robotPose != null) {
+                double tagYaw = tag.robotPose.getOrientation().getYaw(AngleUnit.RADIANS);
+                double robotHeading = fieldForwardHeading - tagYaw;
+                follower.getPose().setHeading(robotHeading);
+                telemetry.addData("AUTO HEADING", "Set to %.1f° from Tag %d",
+                        Math.toDegrees(robotHeading), tagId);
+            }
         }
 
         // --------------------------------------------------------------- //
@@ -145,12 +169,12 @@ public class TestTeleOp extends OpMode {
         double speedMul = slowMode ? SLOW_MODE_SPEED : 1.0;
 
         // heading reset
-        if (gamepad1.right_bumper && !headingResetPressed) {
+        if (gamepad1.y && !headingResetPressed) {
             follower.getPose().setHeading(fieldForwardHeading);
             telemetry.addData("HEADING", "RESET TO %.0f°",
                     Math.toDegrees(fieldForwardHeading));
         }
-        headingResetPressed = gamepad1.right_bumper;
+        headingResetPressed = gamepad1.y;
 
         // field-centric math
         double botHeading = follower.getPose().getHeading() - fieldForwardHeading;
@@ -177,23 +201,22 @@ public class TestTeleOp extends OpMode {
                         RevBlinkinLedDriver.BlinkinPattern.RED :
                         RevBlinkinLedDriver.BlinkinPattern.BLUE));
 
-        // --------------------------------------------------------------- //
-        // -----------------------  LOCALIZER  -------------------------- //
-        // --------------------------------------------------------------- //
-        follower.update();
 
         // --------------------------------------------------------------- //
         // --------------------------  COLLECTOR  ---------------------- //
         // --------------------------------------------------------------- //
 
-        if (gamepad2.a) {
-            // A = intake forward (collect) @ 0.7 power
-            hardware.collector.setPower(0.7);
-        } else if (gamepad2.y) {
-            // Y = eject (spit out) @ -1.0 power
-            hardware.collector.setPower(-1.0);
+        // COLLECTOR + INTERRUPT
+        if (gamepad2.a || gamepad2.y) {
+            // INTERRUPT SHOT SEQUENCE
+            if (threeShots.isBusy()) {
+                threeShots.interrupt();
+            }
+
+            // RUN COLLECTOR
+            hardware.collector.setPower(gamepad2.a ? 1.0 : -1.0);
         } else {
-            // neither button → stop (only if burst is idle)
+            // NO BUTTON → STOP COLLECTOR (ONLY IF NOT BUSY)
             if (!threeShots.isBusy()) {
                 hardware.collector.setPower(0.0);
             }
@@ -243,5 +266,22 @@ public class TestTeleOp extends OpMode {
         hardware.rf.setPower(0);
         hardware.lr.setPower(0);
         hardware.rr.setPower(0);
+    }
+
+    private AprilTagDetection getBestTag(int desiredId) {
+        List<AprilTagDetection> detections = hardware.aprilTagProcessor.getDetections();
+        AprilTagDetection best = null;
+        double bestConfidence = 0;
+
+        for (AprilTagDetection d : detections) {
+            if (d.id == desiredId && d.robotPose != null) {
+                double confidence = 1.0 / (d.robotPose.getPosition().z + 1);  // Closer = better
+                if (confidence > bestConfidence) {
+                    bestConfidence = confidence;
+                    best = d;
+                }
+            }
+        }
+        return best;
     }
 }

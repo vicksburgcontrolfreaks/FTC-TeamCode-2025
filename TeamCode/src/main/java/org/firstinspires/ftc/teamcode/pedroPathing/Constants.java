@@ -41,7 +41,7 @@ public class Constants {
             .rightRearMotorDirection(DcMotorSimple.Direction.FORWARD);
 
     public static PinpointConstants localizerConstants = new PinpointConstants()
-            .forwardPodY(6.89) //175mm 6.89in
+            .forwardPodY(-6.89) //175mm 6.89in
             .strafePodX(0) // 0
             .distanceUnit(DistanceUnit.INCH)
             .hardwareMapName("pinpoint") //EH I2C Bus 0
