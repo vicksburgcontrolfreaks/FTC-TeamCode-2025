@@ -65,7 +65,7 @@ import java.util.List;
  * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list.
  */
 @TeleOp(name = "Concept: AprilTag Localization", group = "Concept")
-@Disabled
+//@Disabled
 public class ConceptAprilTagLocalization extends LinearOpMode {
 
     private static final boolean USE_WEBCAM = true;  // true for webcam, false for phone camera
@@ -95,9 +95,9 @@ public class ConceptAprilTagLocalization extends LinearOpMode {
      * to +/-90 degrees if it's vertical, or 180 degrees if it's upside-down.
      */
     private Position cameraPosition = new Position(DistanceUnit.INCH,
-            0, 0, 0, 0);
+            2, -7, 6, 0);
     private YawPitchRollAngles cameraOrientation = new YawPitchRollAngles(AngleUnit.DEGREES,
-            0, -90, 0, 0);
+            0, -70, 0, 0);
 
     /**
      * The variable to store our instance of the AprilTag processor.
@@ -149,6 +149,10 @@ public class ConceptAprilTagLocalization extends LinearOpMode {
     private void initAprilTag() {
 
         // Create the AprilTag processor.
+        double fx = (1280 / 2) / Math.tan(Math.toRadians(78 / 2));
+        double fy = fx;  // assume square pixels
+        double cx = 1280 / 2;
+        double cy = 720 / 2;
         aprilTag = new AprilTagProcessor.Builder()
 
                 // The following default settings are available to un-comment and edit as needed.
@@ -163,9 +167,10 @@ public class ConceptAprilTagLocalization extends LinearOpMode {
                 // == CAMERA CALIBRATION ==
                 // If you do not manually specify calibration parameters, the SDK will attempt
                 // to load a predefined calibration for your camera.
-                //.setLensIntrinsics(578.272, 578.272, 402.145, 221.506)
+//                .setLensIntrinsics(578.272, 578.272, 402.145, 221.506)
                 // ... these parameters are fx, fy, cx, cy.
 
+                .setLensIntrinsics(fx,fy,cx,cy)
                 .build();
 
         // Adjust Image Decimation to trade-off detection-range for detection-rate.

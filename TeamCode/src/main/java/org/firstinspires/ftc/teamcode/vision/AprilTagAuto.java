@@ -8,11 +8,12 @@ import org.firstinspires.ftc.teamcode.Auton.AutonConstants;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagPoseFtc;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 //import org.firstinspires.ftc.teamcode.pedroPathing.Drawing; // Import existing Drawing class
 import java.util.List;
-
+@Disabled
 @Autonomous(name = "AprilTag Auto")
 public class AprilTagAuto extends OpMode {
     private AprilTagPipeline pipeline;

@@ -1,11 +1,11 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.pedropathing.follower.Follower;
+import com.pedropathing.geometry.Pose;
 import com.pedropathing.util.Timer;
 import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotor;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
@@ -14,119 +14,120 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import java.util.List;
 
 @TeleOp(name = "TestTeleOp", group = "TeleOp")
-public class TestTeleOp extends OpMode {
+public class TeleOpDrive extends OpMode {
 
     // --------------------------------------------------------------------- //
-    // ---------------------------  HARDWARE  ------------------------------ //
+    // --------------------------- HARDWARE ------------------------------ //
     // --------------------------------------------------------------------- //
     private RobotHardware hardware;
-    private AlignAprilTag shooter;      // only for manual Y-align
-    private Follower      follower;
+    private AlignAprilTag aligner;
+    private Follower follower;
 
     // --------------------------------------------------------------------- //
-    // --------------------------  3-SHOT BURST  -------------------------- //
+    // -------------------------- 3-SHOT BURST -------------------------- //
     // --------------------------------------------------------------------- //
-    private ThreeShots threeShots;      // <-- NEW reusable burst
+    private ThreeShots threeShots;
 
     // --------------------------------------------------------------------- //
-    // ---------------------------  CONTROLS  ----------------------------- //
+    // --------------------------- CONTROLS ----------------------------- //
     // --------------------------------------------------------------------- //
-    private double shooterTPS = 1600.0; // live-adjusted with bumpers
-    private boolean collectorOn = false;
-    private int tagId = 20;             // changes with alliance
-
+    private double shooterTPS = 1600.0;
+    private int tagId = 20;
     private final Timer debounceTimer = new Timer();
     private boolean lastA = false, lastB = false;
     private static final double DEBOUNCE_TIME = 0.2;
 
     // --------------------------------------------------------------------- //
-    // ---------------------------  DRIVE  --------------------------------- //
+    // --------------------------- DRIVE --------------------------------- //
     // --------------------------------------------------------------------- //
     private static final double DEADBAND = 0.1;
     private static final double SLOW_MODE_SPEED = 0.4;
     private boolean headingResetPressed = false;
 
     // --------------------------------------------------------------------- //
-    // --------------------------  ALLIANCE  ------------------------------- //
+    // -------------------------- ALLIANCE ------------------------------- //
     // --------------------------------------------------------------------- //
-    private boolean isRedAlliance = false;          // false = Blue
-    private double fieldForwardHeading = 0.0;        // 0° Red, 180° Blue
+    private boolean isRedAlliance = false;
+    private double fieldForwardHeading = 0.0;
 
     // --------------------------------------------------------------------- //
-    // ------------------------------  INIT  ------------------------------- //
+    // -------------------------- AUTO HEADING --------------------------- //
+    // --------------------------------------------------------------------- //
+    private boolean headingInitialized = false;  // ← RUNS ONCE AFTER START
+
+    // --------------------------------------------------------------------- //
+    // ------------------------------ INIT ------------------------------- //
     // --------------------------------------------------------------------- //
     @Override
     public void init() {
         hardware = new RobotHardware();
         hardware.init(hardwareMap, telemetry);
 
-        // ----- follower (field-centric drive) -----
+        // Follower
         try {
             follower = Constants.createFollower(hardwareMap);
-            follower.getPose().setHeading(0.0);  // Force unknown
-            hardware.addTelemetry("Status", "Follower initialized");
+            // LOAD POSE FROM AUTON
+            if (Math.abs(Constants.autonFinalHeading) > 0.01) {
+                Pose savedPose = new Pose(
+                        Constants.autonFinalX,
+                        Constants.autonFinalY,
+                        Constants.autonFinalHeading
+                );
+                follower.setPose(savedPose);
+
+                telemetry.addData("POSE", "Loaded from Auton: X=%.1f Y=%.1f H=%.1f°",
+                        savedPose.getX(), savedPose.getY(),
+                        Math.toDegrees(savedPose.getHeading()));
+            } else {
+                follower.setPose(new Pose(0.0, 0.0, 0.0));
+                telemetry.addData("POSE", "No auton data");
+            }          hardware.addTelemetry("Status", "Follower initialized");
         } catch (Exception e) {
             hardware.addTelemetry("Error", "Follower failed: " + e.getMessage());
         }
 
-        // ----- alignment helper (Y button) -----
-        shooter = new AlignAprilTag(hardware, follower, telemetry);
-        shooter.setTelemetryEnabled(false);
+        // Alignment
+        aligner = new AlignAprilTag(hardware, follower, telemetry);
+        aligner.setTelemetryEnabled(false);
 
-        // ----- NEW 3-shot burst -----
+        // 3-Shot
         threeShots = new ThreeShots(hardware);
-        threeShots.setTelemetryEnabled(true);   // change to false to silence
+        threeShots.setTelemetryEnabled(true);
 
-        // ----- misc -----
+        // Misc
         hardware.flipper.setPosition(0.0);
         debounceTimer.resetTimer();
 
-        // default alliance
+        // Default alliance
         setAlliance(false);
     }
 
     // --------------------------------------------------------------------- //
-    // ---------------------------  INIT LOOP  ----------------------------- //
+    // --------------------------- INIT LOOP ----------------------------- //
     // --------------------------------------------------------------------- //
     @Override
     public void init_loop() {
-        if (gamepad2.dpad_up)   setAlliance(false); // Blue
-        if (gamepad2.dpad_down) setAlliance(true);  // Red
+        if (gamepad2.dpad_up) setAlliance(false);
+        if (gamepad2.dpad_down) setAlliance(true);
 
-        if (follower.getPose().getHeading() == 0.0) {  // First loop or uninitialized
-            AprilTagDetection tag = getBestTag(tagId);
-            if (tag != null && tag.robotPose != null) {
-                double tagYaw = tag.robotPose.getOrientation().getYaw(AngleUnit.RADIANS);
-                double robotHeading = fieldForwardHeading - tagYaw;  // Adjust for alliance
-                follower.getPose().setHeading(robotHeading);
-                telemetry.addData("AUTO HEADING", "Set to %.1f° from Tag %d",
-                        Math.toDegrees(robotHeading), tagId);
-            }
-        }
-
-        telemetry.addData("Instructions",
-                "Gamepad2: DPAD Up (Blue) / Down (Red)");
-        telemetry.addData("Gamepad1",
-                "Left Stick (Move), Right Stick (Rotate), Y (Align)");
-        telemetry.addData("Gamepad2",
-                "A (Collector), Bumpers (TPS), B (3-Shot Burst), X (Flipper)");
-        telemetry.addData("Drive",
-                "Left Bumper = Slow | Right Bumper = Reset Heading");
+        telemetry.addData("Instructions", "Gamepad2: DPAD Up (Blue) / Down (Red)");
+        telemetry.addData("Gamepad1", "Left Stick (Move), Right Stick (Rotate), Y (Align)");
+        telemetry.addData("Gamepad2", "A (Collector), Bumpers (TPS), B (3-Shot Burst), X (Flipper)");
+        telemetry.addData("Drive", "Left Bumper = Slow | Right Bumper = Reset Heading");
         telemetry.addData("Alliance", isRedAlliance ? "RED (0°)" : "BLUE (180°)");
         telemetry.addData("Shooter TPS", shooterTPS);
         telemetry.addData("Burst Ready", threeShots.isBusy() ? "BUSY" : "READY");
-        shooter.updateTelemetry(tagId);
+        aligner.updateTelemetry(tagId);
         telemetry.update();
     }
 
     // --------------------------------------------------------------------- //
-    // --------------------------  ALLIANCE SET  -------------------------- //
+    // -------------------------- ALLIANCE SET -------------------------- //
     // --------------------------------------------------------------------- //
     private void setAlliance(boolean red) {
         isRedAlliance = red;
-        fieldForwardHeading = red ? 0.0 : Math.PI;   // 0° or 180°
+        fieldForwardHeading = red ? 0.0 : Math.PI;
         tagId = red ? 24 : 20;
-
         RevBlinkinLedDriver.BlinkinPattern pattern = red ?
                 RevBlinkinLedDriver.BlinkinPattern.RED :
                 RevBlinkinLedDriver.BlinkinPattern.BLUE;
@@ -134,49 +135,64 @@ public class TestTeleOp extends OpMode {
     }
 
     // --------------------------------------------------------------------- //
-    // ------------------------------  LOOP  ------------------------------- //
+    // ------------------------------ LOOP ------------------------------- //
     // --------------------------------------------------------------------- //
     @Override
     public void loop() {
+
         // --------------------------------------------------------------- //
-        // -----------------------  LOCALIZER  -------------------------- //
+        // ----------------------- LOCALIZER -------------------------- //
         // --------------------------------------------------------------- //
         follower.update();
-        // AUTO-SET HEADING FROM APRILTAG (ONCE)
-        if (Math.abs(follower.getPose().getHeading()) < 0.01) {  // ~0.0
+
+        // --------------------------------------------------------------- //
+        // ------------------- AUTO HEADING (ONCE) -------------------- //
+        // --------------------------------------------------------------- //
+        if (!headingInitialized) {
             AprilTagDetection tag = getBestTag(tagId);
             if (tag != null && tag.robotPose != null) {
-                double tagYaw = tag.robotPose.getOrientation().getYaw(AngleUnit.RADIANS);
-                double robotHeading = fieldForwardHeading - tagYaw;
+                double tagYawRad = tag.robotPose.getOrientation().getYaw(AngleUnit.RADIANS);
+                double cameraYawRad = tagYawRad + Math.PI;  // BACK-FACING CAMERA
+
+                // Normalize
+                while (cameraYawRad > Math.PI) cameraYawRad -= 2 * Math.PI;
+                while (cameraYawRad < -Math.PI) cameraYawRad += 2 * Math.PI;
+
+                double robotHeading = fieldForwardHeading + cameraYawRad;
+
+                // Final normalize
+                while (robotHeading > Math.PI) robotHeading -= 2 * Math.PI;
+                while (robotHeading < -Math.PI) robotHeading += 2 * Math.PI;
+
                 follower.getPose().setHeading(robotHeading);
-                telemetry.addData("AUTO HEADING", "Set to %.1f° from Tag %d",
-                        Math.toDegrees(robotHeading), tagId);
+                telemetry.addData("AUTO HEADING", "Set to %.1f°", Math.toDegrees(robotHeading));
+
+                headingInitialized = true;  // ← NEVER RUNS AGAIN
             }
         }
 
         // --------------------------------------------------------------- //
-        // -------------------  FIELD-CENTRIC DRIVE  -------------------- //
+        // ------------------- FIELD-CENTRIC DRIVE -------------------- //
         // --------------------------------------------------------------- //
-        double rawY  = -gamepad1.left_stick_y;
-        double rawX  =  gamepad1.left_stick_x;
-        double rawRx =  gamepad1.right_stick_x;
+        double rawY = -gamepad1.left_stick_y;
+        double rawX = gamepad1.left_stick_x;
+        double rawRx = gamepad1.right_stick_x;
 
-        double y  = Math.abs(rawY)  > DEADBAND ? rawY  : 0.0;
-        double x  = Math.abs(rawX)  > DEADBAND ? rawX  : 0.0;
+        double y = Math.abs(rawY) > DEADBAND ? rawY : 0.0;
+        double x = Math.abs(rawX) > DEADBAND ? rawX : 0.0;
         double rx = Math.abs(rawRx) > DEADBAND ? rawRx : 0.0;
 
         boolean slowMode = gamepad1.left_bumper;
         double speedMul = slowMode ? SLOW_MODE_SPEED : 1.0;
 
-        // heading reset
+        // Manual reset
         if (gamepad1.y && !headingResetPressed) {
             follower.getPose().setHeading(fieldForwardHeading);
-            telemetry.addData("HEADING", "RESET TO %.0f°",
-                    Math.toDegrees(fieldForwardHeading));
+            telemetry.addData("HEADING", "RESET TO %.0f°", Math.toDegrees(fieldForwardHeading));
         }
         headingResetPressed = gamepad1.y;
 
-        // field-centric math
+        // Field-centric math
         double botHeading = follower.getPose().getHeading() - fieldForwardHeading;
         double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
         double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
@@ -194,48 +210,61 @@ public class TestTeleOp extends OpMode {
         hardware.lr.setPower(lr);
         hardware.rr.setPower(rr);
 
-        // LED drive-mode visual
+        // LED
         hardware.leds.setPattern(slowMode ?
                 RevBlinkinLedDriver.BlinkinPattern.DARK_BLUE :
-                (isRedAlliance ?
-                        RevBlinkinLedDriver.BlinkinPattern.RED :
-                        RevBlinkinLedDriver.BlinkinPattern.BLUE));
-
+                (isRedAlliance ? RevBlinkinLedDriver.BlinkinPattern.RED : RevBlinkinLedDriver.BlinkinPattern.BLUE));
 
         // --------------------------------------------------------------- //
-        // --------------------------  COLLECTOR  ---------------------- //
+        // -------------------------- COLLECTOR ---------------------- //
         // --------------------------------------------------------------- //
-
-        // COLLECTOR + INTERRUPT
-        if (gamepad2.a || gamepad2.y) {
-            // INTERRUPT SHOT SEQUENCE
+// Y = CLEAR MISFEED (Collector reverse + Shooter reverse + Flipper reset)
+        if (gamepad2.y) {
+            // Interrupt 3-shot if running
             if (threeShots.isBusy()) {
                 threeShots.interrupt();
             }
 
-            // RUN COLLECTOR
-            hardware.collector.setPower(gamepad2.a ? 1.0 : -1.0);
+            // Collector reverse
+            hardware.collector.setPower(-1.0);
+
+            // Shooter reverse @ 0.5 power
+            hardware.shooter.setPower(-0.5);
+
+            // Reset flipper
+            hardware.flipper.setPosition(0.0);
+
+        } else if (gamepad2.a) {
+            // A = Normal intake
+            if (threeShots.isBusy()) {
+                threeShots.interrupt();
+            }
+            hardware.collector.setPower(1.0);
+            hardware.shooter.setPower(0.0);  // Normal: shooter off
+            hardware.flipper.setPosition(0.0);
+
         } else {
-            // NO BUTTON → STOP COLLECTOR (ONLY IF NOT BUSY)
+            // No button → stop everything
             if (!threeShots.isBusy()) {
                 hardware.collector.setPower(0.0);
+                hardware.shooter.setPower(0.0);
             }
+            hardware.flipper.setPosition(0.0);
         }
+// Always encoder mode
+//        hardware.collector.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         // --------------------------------------------------------------- //
-        // -----------------------  3-SHOT BURST  ---------------------- //
+        // ----------------------- 3-SHOT BURST ---------------------- //
         // --------------------------------------------------------------- //
         if (gamepad2.b && !lastB) {
-            // start a fresh burst at the *current* TPS
             threeShots.start((int) shooterTPS);
         }
         lastB = gamepad2.b;
-
-        // always update the burst (handles spin-up, flip, index, align)
         threeShots.update(tagId);
 
         // --------------------------------------------------------------- //
-        // -----------------------  MANUAL FLIPPER  -------------------- //
+        // ----------------------- MANUAL FLIPPER -------------------- //
         // --------------------------------------------------------------- //
         if (gamepad2.x && !threeShots.isBusy()) {
             hardware.flipper.setPosition(0.5);
@@ -244,7 +273,7 @@ public class TestTeleOp extends OpMode {
         }
 
         // --------------------------------------------------------------- //
-        // ---------------------------  TELEMETRY  --------------------- //
+        // --------------------------- TELEMETRY --------------------- //
         // --------------------------------------------------------------- //
         telemetry.addData("Alliance", isRedAlliance ? "RED" : "BLUE");
         telemetry.addData("Field Forward", "%.0f°", Math.toDegrees(fieldForwardHeading));
@@ -259,7 +288,7 @@ public class TestTeleOp extends OpMode {
     }
 
     // ----------------------------------------------------------------- //
-    // --------------------------  HELPERS  ---------------------------- //
+    // -------------------------- HELPERS ---------------------------- //
     // ----------------------------------------------------------------- //
     private void stopDriveMotors() {
         hardware.lf.setPower(0);
@@ -272,10 +301,10 @@ public class TestTeleOp extends OpMode {
         List<AprilTagDetection> detections = hardware.aprilTagProcessor.getDetections();
         AprilTagDetection best = null;
         double bestConfidence = 0;
-
         for (AprilTagDetection d : detections) {
             if (d.id == desiredId && d.robotPose != null) {
-                double confidence = 1.0 / (d.robotPose.getPosition().z + 1);  // Closer = better
+                double dist = d.robotPose.getPosition().z;
+                double confidence = 1.0 / (dist + 1);
                 if (confidence > bestConfidence) {
                     bestConfidence = confidence;
                     best = d;

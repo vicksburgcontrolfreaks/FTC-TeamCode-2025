@@ -15,6 +15,11 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
 public class Constants {
+    // Auton final pose constants
+    public static double autonFinalX = 0.0;
+    public static double autonFinalY = 0.0;
+    public static double autonFinalHeading = 0.0;
+
     public static FollowerConstants followerConstants = new FollowerConstants()
             .forwardZeroPowerAcceleration(-48.3)
             .lateralZeroPowerAcceleration(-85.5)

@@ -1,7 +1,12 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.TestOpmodes;
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+
+import org.firstinspires.ftc.teamcode.AlignAprilTag;
+import org.firstinspires.ftc.teamcode.RobotHardware;
+@Disabled
 
 @TeleOp(name = "TEST: Align Only", group = "Tests")
 public class AlignOnlyTest extends OpMode {

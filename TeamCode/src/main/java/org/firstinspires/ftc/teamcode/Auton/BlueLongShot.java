@@ -9,10 +9,10 @@ import com.pedropathing.paths.Path;
 import com.pedropathing.paths.PathChain;
 import com.pedropathing.util.Timer;
 import org.firstinspires.ftc.teamcode.Auton.AutonConstants;
-// import com.bylazar.field.FieldManager; // Uncomment if available
-// import com.bylazar.field.PanelsField; // Uncomment if available
-// import com.bylazar.field.Style; // Uncomment if available
-// import org.firstinspires.ftc.teamcode.pedroPathing.Constants; // Uncomment if you have this class
+ import com.bylazar.field.FieldManager; // Uncomment if available
+ import com.bylazar.field.PanelsField; // Uncomment if available
+ import com.bylazar.field.Style; // Uncomment if available
+ import org.firstinspires.ftc.teamcode.pedroPathing.Constants; // Uncomment if you have this class
 
 @Autonomous(name = "BlueLongShot", group = "Autonomous")
 public class BlueLongShot extends OpMode {
@@ -116,6 +116,9 @@ public class BlueLongShot extends OpMode {
 
     @Override
     public void stop() {
+        Constants.autonFinalX = follower.getPose().getX();
+        Constants.autonFinalY = follower.getPose().getY();
+        Constants.autonFinalHeading = follower.getPose().getHeading();
     }
 
     // Visualization (uncomment if FieldManager/PanelsField available)

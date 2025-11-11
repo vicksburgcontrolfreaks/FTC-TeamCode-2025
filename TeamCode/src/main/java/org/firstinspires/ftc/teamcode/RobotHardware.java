@@ -10,6 +10,10 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Position;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
@@ -133,7 +137,18 @@ public class RobotHardware {
                 // If you do not manually specify calibration parameters, the SDK will attempt
                 // to load a predefined calibration for your camera.
                 .setLensIntrinsics(fx, fy, cx, cy)
-                // ... these parameters are fx, fy, cx, cy.
+                .setCameraPose(
+                        new Position(DistanceUnit.INCH,
+                                2.0,   // X: camera 2" right of center
+                                -7.0,   // Y: camera 7" back from center
+                                6.0,   // Z: camera 6" above ground
+                                0),
+                        new YawPitchRollAngles(AngleUnit.DEGREES,
+                                180,    // YAW: back-facing
+                                20,    // PITCH: horizontal
+                                0,      // ROLL: level
+                                0)
+                )
                 .build();
         visionPortal = new VisionPortal.Builder()
                 .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))  // Change name if needed
