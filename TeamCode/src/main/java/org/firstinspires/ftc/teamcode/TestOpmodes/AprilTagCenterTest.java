@@ -8,7 +8,7 @@ import org.firstinspires.ftc.teamcode.RobotHardware;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
 import java.util.List;
-@Disabled
+//@Disabled
 
 @TeleOp(name = "TEST: AprilTag Center", group = "Tests")
 public class AprilTagCenterTest extends OpMode {
@@ -17,8 +17,8 @@ public class AprilTagCenterTest extends OpMode {
 
     // Change this to the tag you are using for the test
     private static final int TEST_TAG_ID = 20;          // 20 = Blue, 24 = Red
-    private static final double TARGET_CENTER_X = 640.0; // 1280 px width → center
-    private static final double TOLERANCE_PX    = 23.0;
+    private static final double TARGET_CENTER_X = 680.0; // 1280 px width → center
+    private static final double TOLERANCE_PX    = 30.0;
 
     @Override
     public void init() {

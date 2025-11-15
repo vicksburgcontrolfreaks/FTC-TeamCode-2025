@@ -3,6 +3,9 @@ package org.firstinspires.ftc.teamcode.vision;
 
 import com.pedropathing.geometry.Pose;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+// Uncomment these imports if you need manual focus control:
+//import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.ExposureControl;
+//import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.FocusControl;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagPoseFtc;
@@ -34,6 +37,19 @@ public class AprilTagPipeline {
                 .setCamera(webcam)
                 .addProcessor(aprilTag)
                 .build();
+
+        // ===== MANUAL FOCUS CONTROL (COMMENTED OUT) =====
+        // Uncomment the code below if you need to manually set camera focus
+        // Also uncomment the FocusControl import at the top of the file
+        //
+        // Wait for camera to start streaming:
+        // while (visionPortal.getCameraState() != VisionPortal.CameraState.STREAMING) {
+        //     try { Thread.sleep(50); } catch (InterruptedException e) {}
+        // }
+        //
+        // Then set manual focus (adjust the value 0-250 based on your distance):
+        // setManualFocus(100);  // 50-100 for close, 150-250 for far
+        // ================================================
     }
 
     public void startStreaming() {
@@ -109,4 +125,32 @@ public class AprilTagPipeline {
         }
         return "UNKNOWN";
     }
+
+    // ===== MANUAL FOCUS CONTROL METHODS (COMMENTED OUT) =====
+    // Uncomment these methods if you need to control camera focus
+    // Also uncomment the FocusControl import at the top of the file
+    //
+    // /**
+    //  * Set manual focus distance
+    //  * @param focusLength Focus distance (0-250, higher = focus further away)
+    //  *                    Typical values: 50-100 for close objects, 150-250 for far objects
+    //  */
+    // public void setManualFocus(int focusLength) {
+    //     FocusControl focusControl = visionPortal.getCameraControl(FocusControl.class);
+    //     if (focusControl != null) {
+    //         focusControl.setMode(FocusControl.Mode.Fixed);
+    //         focusControl.setFocusLength(focusLength);
+    //     }
+    // }
+    //
+    // /**
+    //  * Enable auto-focus (camera will continuously adjust focus)
+    //  */
+    // public void setAutoFocus() {
+    //     FocusControl focusControl = visionPortal.getCameraControl(FocusControl.class);
+    //     if (focusControl != null) {
+    //         focusControl.setMode(FocusControl.Mode.Auto);
+    //     }
+    // }
+    // ========================================================
 }

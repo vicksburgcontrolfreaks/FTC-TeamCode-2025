@@ -12,6 +12,12 @@ public class LEDManager {
     private boolean magazineFull = false;
     private int flashCount = 0;
     private double flashTimer = 0;
+    private FlashColor flashColor = FlashColor.ALLIANCE;
+
+    private enum FlashColor {
+        ALLIANCE,
+        GREEN
+    }
 
     public LEDManager(RevBlinkinLedDriver leds, boolean redAlliance) {
         this.leds = leds;
@@ -40,6 +46,12 @@ public class LEDManager {
     }
 
     public void update() {
+        // Flash takes priority over everything
+        if (flashCount > 0) {
+            updateFlash();
+            return;
+        }
+
         if (!matchStarted) {
             pulseAlliance();
             return;
@@ -47,11 +59,6 @@ public class LEDManager {
 
         if (sequenceActive) {
             updateRacing();
-            return;
-        }
-
-        if (flashCount > 0) {
-            updateFlash();
             return;
         }
 
@@ -88,15 +95,17 @@ public class LEDManager {
         setRacing();
     }
 
-    private void flashGreen(int count) {
+    public void flashGreen(int count) {
         flashCount = count * 2;  // on/off pairs
         flashTimer = timer.milliseconds();
+        flashColor = FlashColor.GREEN;
         leds.setPattern(RevBlinkinLedDriver.BlinkinPattern.GREEN);
     }
 
     private void flashAlliance(int count) {
         flashCount = count * 2;
         flashTimer = timer.milliseconds();
+        flashColor = FlashColor.ALLIANCE;
         leds.setPattern(isRedAlliance ? RevBlinkinLedDriver.BlinkinPattern.RED : RevBlinkinLedDriver.BlinkinPattern.BLUE);
     }
 
@@ -104,10 +113,23 @@ public class LEDManager {
         if (timer.milliseconds() - flashTimer > 300) {
             flashCount--;
             flashTimer = timer.milliseconds();
-            leds.setPattern(flashCount % 2 == 0 ? RevBlinkinLedDriver.BlinkinPattern.BLACK :
-                    (flashCount > 6 ? (isRedAlliance ? RevBlinkinLedDriver.BlinkinPattern.RED : RevBlinkinLedDriver.BlinkinPattern.BLUE) :
-                            RevBlinkinLedDriver.BlinkinPattern.GREEN));
-            if (flashCount == 0) setSolidAlliance();
+
+            if (flashCount == 0) {
+                setSolidAlliance();
+            } else {
+                // Toggle between color and black
+                if (flashCount % 2 == 0) {
+                    leds.setPattern(RevBlinkinLedDriver.BlinkinPattern.BLACK);
+                } else {
+                    if (flashColor == FlashColor.GREEN) {
+                        leds.setPattern(RevBlinkinLedDriver.BlinkinPattern.GREEN);
+                    } else {
+                        leds.setPattern(isRedAlliance ?
+                                RevBlinkinLedDriver.BlinkinPattern.RED :
+                                RevBlinkinLedDriver.BlinkinPattern.BLUE);
+                    }
+                }
+            }
         }
     }
 }

@@ -16,9 +16,9 @@ public class AlignAprilTag {
     private boolean isAligning = false;
 
     // === TUNABLE ALIGNMENT PARAMETERS ===
-    private double TARGET_X = 660.0;
-    private double kp = 0.8;
-    private double maxSpeed = 0.3;
+    public double TARGET_X = 680.0;
+    private double kp = 0.2;  // Reduced for smoother control
+    private double maxSpeed = 0.2;
     private double tolerance = 30.0;
     private double timeoutSec = 3.0;
 
@@ -48,12 +48,18 @@ public class AlignAprilTag {
     public void setTargetX(double targetX) { this.TARGET_X = targetX; }
 
     // === MAIN ALIGN METHOD ===
+    /**
+     * Continuously align to target tag by rotating.
+     * Call this every loop while you want to maintain alignment.
+     */
     public void alignRotationOnly(int tagId) {
-        isAligning = true;
-        alignTimer.resetTimer();
-        stopMotors();  // Prevent drift
+        // Start alignment if not already running
+        if (!isAligning) {
+            isAligning = true;
+            alignTimer.resetTimer();
+        }
 
-        // Timeout
+        // Timeout check
         if (alignTimer.getElapsedTimeSeconds() > timeoutSec) {
             stopMotors();
             isAligning = false;
@@ -65,7 +71,7 @@ public class AlignAprilTag {
         AprilTagDetection targetTag = getTargetTag(tagId);
         if (targetTag == null) {
             stopMotors();
-            isAligning = false;
+            // Don't reset isAligning - keep trying
             if (enableTelemetry) telemetry.addData("Tag Status", "ID %d not found", tagId);
             return;
         }
@@ -74,15 +80,15 @@ public class AlignAprilTag {
         double currentX = targetTag.center.x;
         double error = TARGET_X - currentX;
 
-        // Within tolerance
+        // Within tolerance - HOLD POSITION
         if (Math.abs(error) < tolerance) {
             stopMotors();
-            isAligning = false;
+            // Don't reset isAligning - maintain lock
             if (enableTelemetry) telemetry.addData("Tag Status", "Centered (X: %.1f)", currentX);
             return;
         }
 
-        // Apply rotation
+        // Apply rotation (negative because positive error means tag is to the right)
         double rotationPower = -kp * error;
         rotationPower = Math.max(-maxSpeed, Math.min(maxSpeed, rotationPower));
 
@@ -97,7 +103,7 @@ public class AlignAprilTag {
             telemetry.addData("Tag X", "%.1f", currentX);
             telemetry.addData("Error", "%.1f", error);
             telemetry.addData("Rot Power", "%.3f", rotationPower);
-            telemetry.addData("Timer", "%.1f", alignTimer.getElapsedTimeSeconds());
+            telemetry.addData("Timer", "%.1fs", alignTimer.getElapsedTimeSeconds());
         }
     }
 
@@ -110,12 +116,14 @@ public class AlignAprilTag {
             if (targetTag != null) {
                 telemetry.addData("Tag Status", "ID %d detected", tagId);
                 telemetry.addData("Tag X", "%.1f", currentX);
+                telemetry.addData("Target X", "%.1f", TARGET_X);
+                telemetry.addData("Error", "%.1f", TARGET_X - currentX);
             } else {
                 telemetry.addData("Tag Status", "ID %d not detected", tagId);
                 telemetry.addData("Tag X", "N/A");
             }
             List<AprilTagDetection> detections = hardware.aprilTagProcessor.getDetections();
-            telemetry.addData("Detections", detections != null ? detections.size() : 0);
+            telemetry.addData("Total Detections", detections != null ? detections.size() : 0);
         }
     }
 
@@ -151,8 +159,12 @@ public class AlignAprilTag {
     }
 
     // === CLEANUP ===
+    /**
+     * Call this when you want to stop alignment and reset the state.
+     */
     public void stopAlignment() {
         stopMotors();
         isAligning = false;
+        alignTimer.resetTimer();
     }
 }

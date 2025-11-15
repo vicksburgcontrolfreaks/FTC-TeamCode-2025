@@ -10,6 +10,7 @@ import com.pedropathing.paths.Path;
 import com.pedropathing.paths.PathChain;
 import com.pedropathing.util.Timer;
 import org.firstinspires.ftc.teamcode.Auton.AutonConstants;
+import org.firstinspires.ftc.teamcode.RobotHardware;
 
 import java.net.PasswordAuthentication;
 // import com.bylazar.field.FieldManager; // Uncomment if available

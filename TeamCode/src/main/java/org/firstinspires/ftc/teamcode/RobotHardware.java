@@ -85,6 +85,7 @@ public class RobotHardware {
         collector = hardwareMap.get(DcMotorEx.class, COLLECTOR_NAME);
 
         shooter.setDirection(DcMotor.Direction.REVERSE);
+        collector.setDirection(DcMotor.Direction.REVERSE);
 
         shooter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         collector.setMode(DcMotor.RunMode.RUN_USING_ENCODER);

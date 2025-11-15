@@ -6,7 +6,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.AlignAprilTag;
 import org.firstinspires.ftc.teamcode.RobotHardware;
-@Disabled
+//@Disabled
 
 @TeleOp(name = "TEST: Align Only", group = "Tests")
 public class AlignOnlyTest extends OpMode {

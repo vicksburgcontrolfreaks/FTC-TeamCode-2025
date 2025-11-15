@@ -15,6 +15,7 @@ public class SimpleMotorTeleOp extends OpMode {
 
     private DcMotorEx collector;  // Our test motor
     private DcMotorEx shooter;  // Our test motor
+    private Servo flipper;  // Flipper servo
 //    private CRServo   ;
 
 
@@ -24,6 +25,7 @@ public class SimpleMotorTeleOp extends OpMode {
 //        indexer = hardwareMap.get(DcMotorEx.class, "indexer"); //Indexer CH 0
         shooter = hardwareMap.get(DcMotorEx.class, "shooter"); //Shooter CH 1
         collector = hardwareMap.get(DcMotorEx.class, "collector"); //Shooter CH 1
+        flipper = hardwareMap.get(Servo.class, "flipper"); //Flipper servo
 //        collector = hardwareMap.get(CRServo.class, "collector"); //collector servo CH 0
 
         // Optional: Reverse direction if motor spins backward
@@ -59,8 +61,16 @@ public class SimpleMotorTeleOp extends OpMode {
             collector.setPower(0.5); // Stop the servo
         }
 
+        // Flipper servo control
+        if (gamepad1.x) {
+            flipper.setPosition(1.0);
+        } else {
+            flipper.setPosition(0.0);
+        }
+
         // Telemetry for debugging
         telemetry.addData("Motor Power", power);
+        telemetry.addData("Flipper Position", flipper.getPosition());
 //        telemetry.addData("Collector Servo Position", collector.setPower());
         // telemetry.addData("Current Draw (Amps)", indexer.getCurrent(CurrentUnit.AMPS));
         telemetry.update();
