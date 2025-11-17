@@ -331,7 +331,8 @@ public class BlueLongShot extends OpMode {
         if (!isCollecting) return;
 
         double currentX = follower.getPose().getX();
-        double distanceToTarget = collectionTargetX - currentX;
+        // Blue heading 180°: flip calculation so forward = -X direction
+        double distanceToTarget = currentX - collectionTargetX;
 
         if (Math.abs(distanceToTarget) < 2.0 ||
                 collectionTimer.getElapsedTimeSeconds() >= COLLECTION_TIME_SEC) {
@@ -341,10 +342,22 @@ public class BlueLongShot extends OpMode {
 
         double drive = Math.signum(distanceToTarget) * COLLECTION_DRIVE_SPEED;
 
-        hardware.lf.setPower(drive);
-        hardware.rf.setPower(drive);
-        hardware.lr.setPower(drive);
-        hardware.rr.setPower(drive);
+        // Heading correction: maintain 180° (blue spike heading)
+        double targetHeading = Math.toRadians(180);
+        double currentHeading = follower.getPose().getHeading();
+        double headingError = targetHeading - currentHeading;
+
+        // Normalize heading error to [-PI, PI]
+        while (headingError > Math.PI) headingError -= 2 * Math.PI;
+        while (headingError < -Math.PI) headingError += 2 * Math.PI;
+
+        double turnCorrection = headingError * 0.3;  // P gain for heading
+
+        // Apply drive + heading correction
+        hardware.lf.setPower(drive + turnCorrection);
+        hardware.rf.setPower(drive - turnCorrection);
+        hardware.lr.setPower(drive + turnCorrection);
+        hardware.rr.setPower(drive - turnCorrection);
     }
 
     private void stopCollection() {

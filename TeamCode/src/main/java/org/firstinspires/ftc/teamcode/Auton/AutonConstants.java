@@ -6,30 +6,32 @@ import com.pedropathing.paths.Path;
 
 public class AutonConstants {
     // Blue poses
-    public static final Pose blueLongStart = new Pose(88, 8, Math.toRadians(270)); // Start position from long shot
-    public static final Pose blueLongLoad = new Pose(110, 13, Math.toRadians(0)); // Load position on long shot
-    public static final Pose blueLongScore = new Pose(88, 14, Math.toRadians(305)); // Scoring position on long shot
-    public static final Pose blueShortStart = new Pose(109, 133, Math.toRadians(0)); // Start position from short shot
-    public static final Pose blueSpike1 = new Pose(102, 83, Math.toRadians(0)); // P-P-G 23
-    public static final Pose blueSpike2 = new Pose(102, 59, Math.toRadians(0)); // P-G-P 22
-    public static final Pose blueSpike3 = new Pose(102, 35, Math.toRadians(0)); // G-P-P 21
-    public static final Pose blueSpike1Post = new Pose(122, 83, Math.toRadians(0)); // P-P-G post
-    public static final Pose blueSpike2Post = new Pose(122, 59, Math.toRadians(0)); // P-G-P post
-    public static final Pose blueSpike3Post = new Pose(122, 35, Math.toRadians(0)); // G-P-P post
-    public static final Pose blueShortScore = new Pose(86, 83, Math.toRadians(320)); // Scoring position on short shot
+    public static final Pose blueLongStart = new Pose(54, 8, Math.toRadians(270)); // Start position from long shot88,8
+    public static final Pose blueLongLoad = new Pose(32, 13, Math.toRadians(180)); // Load position on long shot110,13
+    public static final Pose blueLongScore = new Pose(52, 14, Math.toRadians(291)); // Scoring position on long shot
+    public static final Pose blueShortStart = new Pose(35, 133, Math.toRadians(0)); // Start position from short shot88,14
+    public static final Pose blueSpike1 = new Pose(42, 83, Math.toRadians(180)); // P-P-G 23
+    public static final Pose blueSpike2 = new Pose(42, 59, Math.toRadians(180)); // P-G-P 22
+    public static final Pose blueSpike3 = new Pose(42, 35, Math.toRadians(180)); // G-P-P 21
+    public static final Pose blueSpike1Post = new Pose(22, 83, Math.toRadians(180)); // P-P-G post
+    public static final Pose blueSpike2Post = new Pose(22, 59, Math.toRadians(180)); // P-G-P post
+    public static final Pose blueSpike3Post = new Pose(22, 35, Math.toRadians(180)); // G-P-P post
+    public static final Pose blueShortScore = new Pose(86, 86, Math.toRadians(138)); // Scoring position on short shot
+    public static final Pose blueGateRelease = new Pose(20, 70, Math.toRadians(180)); // Position to release the blue gate
 
     // Red poses (x=72 mirror, heading + 180° normalized)
-    public static final Pose redLongStart = new Pose(54, 11, Math.toRadians(270)); // 300° + 180° = 480° - 360° = 120°
-    public static final Pose redLongLoad = new Pose(32, 13, Math.toRadians(180)); // 0° + 180° = 180°
-    public static final Pose redLongScore = new Pose(52, 14, Math.toRadians(235)); // 305° + 180° = 485° - 360° = 125°
-    public static final Pose redShortStart = new Pose(35, 133, Math.toRadians(180)); // 0° + 180° = 180°
-    public static final Pose redSpike1 = new Pose(42, 83, Math.toRadians(180)); // P-P-G 23
-    public static final Pose redSpike2 = new Pose(42, 59, Math.toRadians(180)); // P-G-P 22
-    public static final Pose redSpike3 = new Pose(42, 35, Math.toRadians(180)); // G-P-P 21
-    public static final Pose redSpike1Post = new Pose(22, 83, Math.toRadians(180)); // 0° + 180° = 180°
-    public static final Pose redSpike2Post = new Pose(22, 59, Math.toRadians(180)); // 0° + 180° = 180°
-    public static final Pose redSpike3Post = new Pose(22, 35, Math.toRadians(180)); // 0° + 180° = 180°
-    public static final Pose redShortScore = new Pose(58, 83, Math.toRadians(140)); // 320° + 180° = 500° - 360° = 140°
+    public static final Pose redLongStart = new Pose(88, 8, Math.toRadians(270)); //54,11
+    public static final Pose redLongLoad = new Pose(110, 13, Math.toRadians(0)); // 0° + 180° = 180°
+    public static final Pose redLongScore = new Pose(88, 14, Math.toRadians(250)); // 305° + 180° = 485° - 360° = 125°
+    public static final Pose redShortStart = new Pose(109, 133, Math.toRadians(180)); // 0° + 180° = 180°
+    public static final Pose redSpike1 = new Pose(102, 83, Math.toRadians(0)); // P-P-G 23
+    public static final Pose redSpike2 = new Pose(102, 59, Math.toRadians(0)); // P-G-P 22
+    public static final Pose redSpike3 = new Pose(102, 35, Math.toRadians(0)); // G-P-P 21
+    public static final Pose redSpike1Post = new Pose(122, 83, Math.toRadians(0)); // 0° + 180° = 180°
+    public static final Pose redSpike2Post = new Pose(122, 59, Math.toRadians(0)); // 0° + 180° = 180°
+    public static final Pose redSpike3Post = new Pose(122, 35, Math.toRadians(0)); // 0° + 180° = 180°
+    public static final Pose redShortScore = new Pose(98, 86, Math.toRadians(57)); // 320° + 180° = 500° - 360° = 140°
+    public static final Pose redGateRelease = new Pose(120, 70, Math.toRadians(0)); // Position to release the red gate
 
     // Blue paths
     public static Path blueLongLoadPath(Pose start) {

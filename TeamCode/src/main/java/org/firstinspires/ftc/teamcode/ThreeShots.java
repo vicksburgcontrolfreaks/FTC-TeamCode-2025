@@ -38,6 +38,7 @@ public class ThreeShots {
     private boolean bPressed   = false;   // true while sequence is running
     public int     shot       = 0;       // 0,1,2,3
     private int     currentShot = 0;
+    private int     targetVelocity = 1500;  // Store the target velocity for this sequence
 
     // store every shot so you can read it later
     private final double[] preVelocities  = new double[3];
@@ -67,6 +68,7 @@ public class ThreeShots {
         bPressed = true;
         shot = 0;
         currentShot = 0;
+        targetVelocity = velocity;  // Store target velocity for this sequence
 
         hardware.shooter.setVelocity(velocity);
         if (enableTelemetry) {
@@ -86,8 +88,8 @@ public class ThreeShots {
 
         double vel = hardware.shooter.getVelocity();
 
-        // Shot 0: Wait for velocity, then fire
-        if (shot == 0 && bPressed && vel > SET_VELOCITY - VELOCITY_TOLERANCE) {
+        // Shot 0: Wait for velocity, then fire (use actual target velocity instead of hardcoded)
+        if (shot == 0 && bPressed && vel > targetVelocity - VELOCITY_TOLERANCE) {
             flipAndNext();
         }
         // Shots 1-2: Wait for collector to finish indexing, then fire

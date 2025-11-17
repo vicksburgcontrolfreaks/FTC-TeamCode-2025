@@ -329,16 +329,29 @@ public class RedLongShot extends OpMode {
             return;
         }
 
-        // RED: driving to lower X values (backward)
+        // RED: driving FORWARD (heading 0° toward +X)
         double drive = Math.signum(distanceToTarget) * COLLECTION_DRIVE_SPEED;
 
-        hardware.lf.setPower(-drive);  // Inverted for red
-        hardware.rf.setPower(-drive);
-        hardware.lr.setPower(-drive);
-        hardware.rr.setPower(-drive);
+        // Heading correction: maintain 0° (red spike heading)
+        double targetHeading = 0.0;
+        double currentHeading = follower.getPose().getHeading();
+        double headingError = targetHeading - currentHeading;
+
+        // Normalize heading error to [-PI, PI]
+        while (headingError > Math.PI) headingError -= 2 * Math.PI;
+        while (headingError < -Math.PI) headingError += 2 * Math.PI;
+
+        double turnCorrection = headingError * 0.3;  // P gain for heading
+
+        // Apply drive + heading correction
+        hardware.lf.setPower(drive + turnCorrection);
+        hardware.rf.setPower(drive - turnCorrection);
+        hardware.lr.setPower(drive + turnCorrection);
+        hardware.rr.setPower(drive - turnCorrection);
 
         telemetry.addData("Drive Direction", drive > 0 ? "FORWARD" : "BACKWARD");
-        telemetry.addData("Drive Power", "%.2f", -drive);
+        telemetry.addData("Drive Power", "%.2f", drive);
+        telemetry.addData("Heading Error", "%.1f°", Math.toDegrees(headingError));
     }
 
     private void stopCollection() {
