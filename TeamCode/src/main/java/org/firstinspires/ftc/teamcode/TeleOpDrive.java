@@ -38,8 +38,8 @@ public class TeleOpDrive extends OpMode {
     // --------------------------------------------------------------------- //
     // --------------------------- CONTROLS ----------------------------- //
     // --------------------------------------------------------------------- //
-    private double shooterTPS = 1600.0;
-    private double lowShotTPS = 1300.0;
+    private double longShotTPS = 1300.0;
+    private double shortShotTPS = 1000.0;
     private int tagId = 20;
     private final Timer debounceTimer = new Timer();
     private boolean lastA = false, lastB = false, lastX = false, lastY = false;
@@ -146,7 +146,7 @@ public class TeleOpDrive extends OpMode {
         telemetry.addData("", "");
         telemetry.addData("=== STATUS ===", "");
         telemetry.addData("Alliance", isRedAlliance ? "RED (0°)" : "BLUE (180°)");
-        telemetry.addData("Shooter TPS", shooterTPS);
+        telemetry.addData("Long Shot TPS", longShotTPS);
         telemetry.addData("Burst Ready", threeShots.isBusy() ? "BUSY" : "READY");
         telemetry.addData("Pose Source", poseLoadedFromAuton ? "AUTON" : "DEFAULT");
         aligner.updateTelemetry(tagId);
@@ -347,7 +347,7 @@ public class TeleOpDrive extends OpMode {
             }
 
             hardware.collector.setPower(1.0);
-            hardware.shooter.setPower(0.0);  // Normal: shooter off
+            hardware.shooter.setPower(-0.10);  // Slight reverse to prevent jamming
             hardware.flipper.setPosition(0.0);
 
         } else {
@@ -366,15 +366,15 @@ public class TeleOpDrive extends OpMode {
         // --------------------------------------------------------------- //
         // ----------------------- 3-SHOT BURST ---------------------- //
         // --------------------------------------------------------------- //
-        // X = Short shot (1300 TPS)
+        // X = Short shot (1000 TPS)
         if (gamepad2.x && !lastX && !threeShots.isBusy()) {
-            threeShots.start((int) lowShotTPS);
+            threeShots.start((int) shortShotTPS);
         }
         lastX = gamepad2.x;
 
-        // B = Long shot (1600 TPS)
+        // B = Long shot (1300 TPS)
         if (gamepad2.b && !lastB && !threeShots.isBusy()) {
-            threeShots.start((int) shooterTPS);
+            threeShots.start((int) longShotTPS);
         }
         lastB = gamepad2.b;
 
@@ -404,8 +404,8 @@ public class TeleOpDrive extends OpMode {
 
         telemetry.addData("", "");
         telemetry.addData("=== SHOOTER ===", "");
-        telemetry.addData("High Shot TPS", shooterTPS);
-        telemetry.addData("Low Shot TPS", lowShotTPS);
+        telemetry.addData("Long Shot TPS", longShotTPS);
+        telemetry.addData("Short Shot TPS", shortShotTPS);
         telemetry.addData("Current Velocity", "%.0f", hardware.shooter.getVelocity());
         telemetry.addData("Burst Status", threeShots.isBusy() ? "BUSY" : "READY");
 

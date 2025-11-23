@@ -10,7 +10,8 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Auton.AutonConstants;
 
 /**
- * Re-usable command to navigate to loading zone and collect samples.
+ * Re-usable command to navigate to hand load position and collect samples.
+ * Traverses from current pose to the HandLoad pose, then drives forward to collect.
  * <p>
  * Usage in TeleOp:
  * <pre>
@@ -56,13 +57,13 @@ public class LoadingZoneCommand {
         this.alliance = alliance.toUpperCase();
         this.collectionTimer = new Timer();
 
-        // Set alliance-specific targets (using spike2 as default loading zone entry)
+        // Set alliance-specific targets for hand load position
         if (this.alliance.equals("BLUE")) {
-            targetLoadingZone = AutonConstants.blueSpike2;
-            collectionTargetX = AutonConstants.blueSpike2Post.getX();
+            targetLoadingZone = AutonConstants.blueHandLoad;
+            collectionTargetX = AutonConstants.blueHandLoadPost.getX();
         } else {
-            targetLoadingZone = AutonConstants.redSpike2;
-            collectionTargetX = AutonConstants.redSpike2Post.getX();
+            targetLoadingZone = AutonConstants.redHandLoad;
+            collectionTargetX = AutonConstants.redHandLoadPost.getX();
         }
     }
 
@@ -86,7 +87,7 @@ public class LoadingZoneCommand {
 
         follower.followPath(pathToLoadingZone, false);
 
-        telemetry.addData("Loading Zone", "Started - Alliance: %s", alliance);
+        telemetry.addData("Hand Load", "Started - Alliance: %s", alliance);
         telemetry.addData("Target", "X=%.1f Y=%.1f",
                 targetLoadingZone.getX(), targetLoadingZone.getY());
         telemetry.update();
@@ -98,10 +99,10 @@ public class LoadingZoneCommand {
 
         switch (state) {
             case 1:
-                // State 1: Following path to loading zone
+                // State 1: Following path to hand load position
                 if (!follower.isBusy()) {
-                    // Reached loading zone, start collection drive
-                    telemetry.addData("Loading Zone", "Reached - Starting collection");
+                    // Reached hand load position, start collection drive
+                    telemetry.addData("Hand Load", "Reached - Starting collection");
                     startCollectionDrive();
                     state = 2;
                 }
@@ -112,7 +113,7 @@ public class LoadingZoneCommand {
                 updateCollection();
                 if (!isCollecting) {
                     // Collection complete
-                    telemetry.addData("Loading Zone", "Complete");
+                    telemetry.addData("Hand Load", "Complete");
                     state = 3;
                     isRunning = false;
                 }
@@ -124,7 +125,7 @@ public class LoadingZoneCommand {
         }
 
         // Telemetry
-        telemetry.addData("LoadZone State", state);
+        telemetry.addData("HandLoad State", state);
         telemetry.addData("Follower Busy", follower.isBusy());
         telemetry.addData("Collecting", isCollecting);
         if (isCollecting) {
@@ -147,7 +148,7 @@ public class LoadingZoneCommand {
         }
         isRunning = false;
         state = 0;
-        telemetry.addData("Loading Zone", "CANCELLED");
+        telemetry.addData("Hand Load", "CANCELLED");
     }
 
     // --------------------------------------------------------------------- //
@@ -169,10 +170,10 @@ public class LoadingZoneCommand {
         if (!isCollecting) return;
 
         double currentX = follower.getPose().getX();
-        // Blue (180°): forward = -X, Red (0°): forward = +X
+        // Blue (0°): forward = +X, Red (180°): forward = -X
         double distanceToTarget = alliance.equals("BLUE")
-            ? currentX - collectionTargetX  // Blue: flip calculation
-            : collectionTargetX - currentX;  // Red: normal calculation
+            ? collectionTargetX - currentX  // Blue: normal calculation (+X direction)
+            : currentX - collectionTargetX;  // Red: flip calculation (-X direction)
 
         // Stop if reached target or timeout
         if (Math.abs(distanceToTarget) < 2.0 ||
@@ -184,8 +185,8 @@ public class LoadingZoneCommand {
         // Calculate drive power
         double drive = Math.signum(distanceToTarget) * COLLECTION_DRIVE_SPEED;
 
-        // Heading correction: maintain spike heading (Blue: 180°, Red: 0°)
-        double targetHeading = alliance.equals("BLUE") ? Math.toRadians(180) : 0.0;
+        // Heading correction: maintain HandLoad heading (Blue: 0°, Red: 180°)
+        double targetHeading = alliance.equals("BLUE") ? 0.0 : Math.toRadians(180);
         double currentHeading = follower.getPose().getHeading();
         double headingError = targetHeading - currentHeading;
 

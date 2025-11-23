@@ -6,6 +6,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
+import com.pedropathing.paths.PathConstraints;
 import com.pedropathing.util.Timer;
 
 import org.firstinspires.ftc.teamcode.AlignAprilTag;
@@ -29,6 +30,7 @@ public class RedLongShot extends OpMode {
     private static final int RED_TAG_ID = 24;
     private static final double COLLECTION_TIME_SEC = 4.0;
     private static final double COLLECTION_DRIVE_SPEED = 0.3;
+    private static final double COLLECTION_MAX_POWER = 0.3;  // Slow collection speed
     private boolean isCollecting = false;
 
     // Obelisk reading
@@ -36,6 +38,11 @@ public class RedLongShot extends OpMode {
     private Pose targetSpike = null;
     private Pose targetSpikePost = null;
     private double collectionTargetX = 22.0;  // Will be set based on spike
+
+    // Second collection spike
+    private Pose secondSpike = null;
+    private Pose secondSpikePost = null;
+    private double secondCollectionTargetX = 22.0;
 
     @Override
     public void init() {
@@ -149,6 +156,7 @@ public class RedLongShot extends OpMode {
 
     @Override
     public void start() {
+        hardware.flipper.setPosition(0.0);
         opmodeTimer.resetTimer();
 
         // Default to middle spike if no reading
@@ -160,15 +168,38 @@ public class RedLongShot extends OpMode {
             telemetry.addData("WARNING", "No obelisk read - defaulting to Spike 2");
         }
 
+        // Determine second collection spike (prefer spike 1, then 2, then 3)
+        determineSecondSpike();
+
         // Build paths now that we know the target
         buildPaths();
         setPathState(0);
     }
 
+    private void determineSecondSpike() {
+        // Prefer spike 1 (tag 23), then spike 2 (tag 22), then spike 3 (tag 21)
+        if (obeliskReading != 23) {
+            // Spike 1 not collected yet, collect it next
+            secondSpike = AutonConstants.redSpike1;
+            secondSpikePost = AutonConstants.redSpike1Post;
+        } else if (obeliskReading != 22) {
+            // Spike 1 already collected, try spike 2
+            secondSpike = AutonConstants.redSpike2;
+            secondSpikePost = AutonConstants.redSpike2Post;
+        } else {
+            // Spike 1 and 2 collected, collect spike 3
+            secondSpike = AutonConstants.redSpike3;
+            secondSpikePost = AutonConstants.redSpike3Post;
+        }
+        secondCollectionTargetX = secondSpikePost.getX();
+        telemetry.addData("Second Spike", "X=%.1f Y=%.1f", secondSpike.getX(), secondSpike.getY());
+    }
+
     private void buildPaths() {
-        // Path from redLongStart to redLongScore
+        // Path from redLongStart to redLongScore - FASTER
         initialToScore = follower.pathBuilder()
                 .addPath(AutonConstants.redLongScorePath(AutonConstants.redLongStart))
+                .setConstraints(new com.pedropathing.paths.PathConstraints(0.99, 100, 1.5, 1))
                 .build();
 
         telemetry.addData("Paths", "Built for Tag %d", obeliskReading);
@@ -214,30 +245,38 @@ public class RedLongShot extends OpMode {
     private void autonomousPathUpdate() {
         switch (pathState) {
             case 0:
-                // Drive to redLongScore
-                telemetry.addData("Action", "Moving to score position");
+                // Drive to redLongScore AND start shooter immediately
+                telemetry.addData("Action", "Moving to score position (shooter spinning up)");
+
+                // Start shooter motor immediately
+                hardware.shooter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+                hardware.shooter.setPower(1.0);  // Full power for shooting
+
                 follower.followPath(initialToScore, true);
                 setPathState(1);
                 break;
 
             case 1:
                 // Shoot preloaded samples
+                // Keep shooter running while driving
+                hardware.shooter.setPower(1.0);
+
                 if (!follower.isBusy()) {
                     telemetry.addData("Action", "At score position, starting 3-shot");
-                    threeShots.start(1600);
+                    threeShots.start(1300);
                     setPathState(2);
                 }
                 break;
 
             case 2:
-                // Move to spike after shooting
+                // Wait for 3-shot to complete, THEN turn on collector and move to spike
                 if (!threeShots.isBusy()) {
-                    telemetry.addData("Action", "Moving to spike mark %d", obeliskReading);
+                    telemetry.addData("Action", "3-shot complete, moving to spike mark %d", obeliskReading);
 
-                    // Turn on collector and shooter reverse
+                    // NOW turn on collector and shooter reverse (after shooting is done)
                     hardware.collector.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
                     hardware.collector.setPower(1.0);
-                    hardware.shooter.setPower(-0.1);
+                    hardware.shooter.setPower(-0.10);  // Reverse to prevent jamming
 
                     // Build path to target spike with heading interpolation
                     Pose currentPose = follower.getPose();
@@ -254,24 +293,45 @@ public class RedLongShot extends OpMode {
                 break;
 
             case 3:
-                // Start collection drive at spike
+                // Wait until at spike, then drive to spikePost while collecting
                 if (!follower.isBusy()) {
-                    telemetry.addData("Action", "At spike, starting collection drive");
-                    startCollectionDrive();
+                    telemetry.addData("Action", "At spike, driving to spikePost while collecting (slow)");
+
+                    // Limit power for slow collection
+                    follower.setMaxPower(COLLECTION_MAX_POWER);
+
+                    // Build path from spike to spikePost
+                    PathChain chainToPost = follower.pathBuilder()
+                            .addPath(new com.pedropathing.geometry.BezierLine(
+                                    follower.getPose(),
+                                    targetSpikePost))
+                            .setLinearHeadingInterpolation(follower.getPose().getHeading(), targetSpikePost.getHeading())
+                            .build();
+                    follower.followPath(chainToPost, false);
                     setPathState(4);
                 }
                 break;
 
             case 4:
-                // Drive slowly while collecting
-                if (!isCollecting) {
-                    telemetry.addData("Action", "Collection complete, returning to score");
+                // Wait until at spikePost, then return to score
+                if (!follower.isBusy()) {
+                    telemetry.addData("Action", "At spikePost, returning to score");
 
+                    // Reset to full power for normal driving
+                    follower.setMaxPower(1.0);
+
+                    // Stop shooter reverse and collector
                     hardware.shooter.setPower(0.0);
+                    hardware.collector.setPower(0.0);
 
-                    // Build path back to score
+                    // Build path back to SHORT score from current position
+                    Pose currentPose = follower.getPose();
+                    com.pedropathing.paths.Path pathToShortScore = new com.pedropathing.paths.Path(
+                            new com.pedropathing.geometry.BezierLine(currentPose, AutonConstants.redShortScore));
+                    pathToShortScore.setLinearHeadingInterpolation(currentPose.getHeading(), AutonConstants.redShortScore.getHeading());
+
                     collectionToScore = follower.pathBuilder()
-                            .addPath(AutonConstants.redLongScorePath(follower.getPose()))
+                            .addPath(pathToShortScore)
                             .build();
                     follower.followPath(collectionToScore, true);
                     setPathState(5);
@@ -279,32 +339,117 @@ public class RedLongShot extends OpMode {
                 break;
 
             case 5:
-                // Shoot collected balls
+                // Shoot collected balls at SHORT score
                 if (!follower.isBusy()) {
-                    telemetry.addData("Action", "At score position, starting final 3-shot");
-                    threeShots.start(1600);
+                    telemetry.addData("Action", "At SHORT score position, starting 3-shot at 1100 TPS");
+                    threeShots.start(1100);
                     setPathState(6);
                 }
                 break;
 
             case 6:
-                // Wait for final 3-shot to complete, then move to loading zone
+                // Wait for first cycle 3-shot to complete, THEN turn on collector and move to second spike
                 if (!threeShots.isBusy()) {
-                    telemetry.addData("Action", "Moving to loading zone");
+                    telemetry.addData("Action", "First cycle complete, moving to second spike (X=%.1f Y=%.1f)",
+                            secondSpike.getX(), secondSpike.getY());
 
-                    // Build path to redLongLoad
-                    PathChain pathToLoad = follower.pathBuilder()
-                            .addPath(AutonConstants.redLongLoadPath(follower.getPose()))
+                    // NOW turn on collector and shooter reverse for second collection (after shooting is done)
+                    hardware.collector.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+                    hardware.collector.setPower(1.0);
+                    hardware.shooter.setPower(-0.10);  // Reverse to prevent jamming
+
+                    // Build path to second spike with heading interpolation
+                    Pose currentPose = follower.getPose();
+                    com.pedropathing.paths.Path pathToSecondSpike = new com.pedropathing.paths.Path(
+                            new com.pedropathing.geometry.BezierLine(currentPose, secondSpike));
+                    pathToSecondSpike.setLinearHeadingInterpolation(currentPose.getHeading(), secondSpike.getHeading());
+
+                    PathChain chainToSecondSpike = follower.pathBuilder()
+                            .addPath(pathToSecondSpike)
                             .build();
-                    follower.followPath(pathToLoad, true);
+                    follower.followPath(chainToSecondSpike, false);
                     setPathState(7);
                 }
                 break;
 
             case 7:
-                // Wait to reach loading zone
+                // Wait until at second spike, then drive to secondSpikePost while collecting
                 if (!follower.isBusy()) {
-                    telemetry.addData("Action", "Complete! At loading zone");
+                    telemetry.addData("Action", "At second spike, driving to spikePost while collecting (slow)");
+
+                    // Limit power for slow collection
+                    follower.setMaxPower(COLLECTION_MAX_POWER);
+
+                    // Build path from second spike to secondSpikePost
+                    PathChain chainToSecondPost = follower.pathBuilder()
+                            .addPath(new com.pedropathing.geometry.BezierLine(
+                                    follower.getPose(),
+                                    secondSpikePost))
+                            .setLinearHeadingInterpolation(follower.getPose().getHeading(), secondSpikePost.getHeading())
+                            .build();
+                    follower.followPath(chainToSecondPost, false);
+                    setPathState(8);
+                }
+                break;
+
+            case 8:
+                // Wait until at secondSpikePost, then return to score
+                if (!follower.isBusy()) {
+                    telemetry.addData("Action", "At second spikePost, returning to score");
+
+                    // Reset to full power for normal driving
+                    follower.setMaxPower(1.0);
+
+                    // Stop shooter reverse and collector
+                    hardware.shooter.setPower(0.0);
+                    hardware.collector.setPower(0.0);
+
+                    // Build path back to SHORT score from current position
+                    Pose currentPose2 = follower.getPose();
+                    com.pedropathing.paths.Path pathToShortScore2 = new com.pedropathing.paths.Path(
+                            new com.pedropathing.geometry.BezierLine(currentPose2, AutonConstants.redShortScore));
+                    pathToShortScore2.setLinearHeadingInterpolation(currentPose2.getHeading(), AutonConstants.redShortScore.getHeading());
+
+                    collectionToScore = follower.pathBuilder()
+                            .addPath(pathToShortScore2)
+                            .build();
+                    follower.followPath(collectionToScore, true);
+                    setPathState(9);
+                }
+                break;
+
+            case 9:
+                // Wait until back at SHORT score, then shoot second batch of collected balls
+                if (!follower.isBusy()) {
+                    telemetry.addData("Action", "At SHORT score position, starting second 3-shot at 1100 TPS");
+                    threeShots.start(1100);
+                    setPathState(10);
+                }
+                break;
+
+            case 10:
+                // Wait for second final 3-shot to complete, then move to gate release
+                if (!threeShots.isBusy()) {
+                    telemetry.addData("Action", "Moving to gate release");
+
+                    // Build path to redGateRelease
+                    Pose currentPose = follower.getPose();
+                    com.pedropathing.paths.Path pathToGate = new com.pedropathing.paths.Path(
+                            new com.pedropathing.geometry.BezierLine(currentPose, AutonConstants.redGateRelease));
+                    pathToGate.setLinearHeadingInterpolation(currentPose.getHeading(), AutonConstants.redGateRelease.getHeading());
+
+                    PathChain chainToGate = follower.pathBuilder()
+                            .addPath(pathToGate)
+                            .build();
+                    follower.followPath(chainToGate, true);
+                    setPathState(11);
+                }
+                break;
+
+            case 11:
+                // Wait to reach gate release
+                if (!follower.isBusy()) {
+                    telemetry.addData("Action", "Complete! At gate release");
                     setPathState(-1);
                 }
                 break;
@@ -341,7 +486,7 @@ public class RedLongShot extends OpMode {
         while (headingError > Math.PI) headingError -= 2 * Math.PI;
         while (headingError < -Math.PI) headingError += 2 * Math.PI;
 
-        double turnCorrection = headingError * 0.3;  // P gain for heading
+        double turnCorrection = headingError * 0.6;  // Increased P gain for stronger heading correction
 
         // Apply drive + heading correction
         hardware.lf.setPower(drive + turnCorrection);

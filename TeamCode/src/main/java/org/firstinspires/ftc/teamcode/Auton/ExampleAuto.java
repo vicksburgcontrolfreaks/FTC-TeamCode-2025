@@ -41,16 +41,16 @@ public class ExampleAuto extends OpMode {
 
     public void buildPaths() {
         /* This is our scorePreload path. We are using a BezierLine, which is a straight line. */
-        scorePreload = new Path(new BezierLine(AutonConstants.blueLongStart, AutonConstants.blueLongLoad));
-        scorePreload.setLinearHeadingInterpolation(AutonConstants.blueLongStart.getHeading(), AutonConstants.blueLongLoad.getHeading());
+        scorePreload = new Path(new BezierLine(AutonConstants.blueLongStart, AutonConstants.blueHandLoad));
+        scorePreload.setLinearHeadingInterpolation(AutonConstants.blueLongStart.getHeading(), AutonConstants.blueHandLoad.getHeading());
 
     /* Here is an example for Constant Interpolation
     scorePreload.setConstantInterpolation(startPose.getHeading()); */
 
         /* This is our grabPickup1 PathChain. We are using a single path with a BezierLine, which is a straight line. */
         grabPickup1 = follower.pathBuilder()
-                .addPath(new BezierLine(AutonConstants.blueLongLoad, AutonConstants.blueLongScore))
-                .setLinearHeadingInterpolation(AutonConstants.blueLongLoad.getHeading(), AutonConstants.blueLongScore.getHeading())
+                .addPath(new BezierLine(AutonConstants.blueHandLoad, AutonConstants.blueLongScore))
+                .setLinearHeadingInterpolation(AutonConstants.blueHandLoad.getHeading(), AutonConstants.blueLongScore.getHeading())
                 .build();
 
         /* This is our scorePickup1 PathChain. We are using a single path with a BezierLine, which is a straight line. */

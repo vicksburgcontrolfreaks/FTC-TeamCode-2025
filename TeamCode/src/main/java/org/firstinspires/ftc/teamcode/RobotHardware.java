@@ -91,18 +91,29 @@ public class RobotHardware {
         collector.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         collector.setTargetPositionTolerance(30);
 
+        // Configure shooter PIDF for velocity control
+        // P: Proportional gain (tune for responsiveness)
+        // I: Integral gain (usually 0 for flywheel)
+        // D: Derivative gain (usually 0 for flywheel)
+        // F: Feed-forward (based on motor max velocity and battery voltage)
+        double batteryVoltage = getBatteryVoltage();
+        double maxVelocity = 2800.0;  // Max ticks/sec at 12V - tune this based on your motor
+        double F = (32767.0 / maxVelocity) * (12.0 / batteryVoltage);
+        shooter.setVelocityPIDFCoefficients(1.5, 0.0, 0.0, F);
+
         shooter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         collector.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // === FLIPPER SERVO ===
         flipper = hardwareMap.get(Servo.class, FLIPPER_NAME);
         flipper.setDirection(Servo.Direction.FORWARD);
+        // Don't set position during init - will be set in start()
 
         // === LIFT SYSTEM ===
         lWinch = hardwareMap.get(DcMotorEx.class, LWINCH_NAME);
         rWinch = hardwareMap.get(DcMotorEx.class, RWINCH_NAME);
 
-        lWinch.setDirection(DcMotorSimple.Direction.REVERSE);
+        lWinch.setDirection(DcMotorSimple.Direction.FORWARD);
         rWinch.setDirection(DcMotorSimple.Direction.FORWARD);
 
         lWinch.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);

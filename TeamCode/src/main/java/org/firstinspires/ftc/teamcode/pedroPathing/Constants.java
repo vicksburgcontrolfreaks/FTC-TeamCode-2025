@@ -21,12 +21,12 @@ public class Constants {
     public static double autonFinalHeading = 0.0;
 
     public static FollowerConstants followerConstants = new FollowerConstants()
-            .forwardZeroPowerAcceleration(-48.3)
-            .lateralZeroPowerAcceleration(-85.5)
-            .translationalPIDFCoefficients(new PIDFCoefficients(0.1, 0, 0.01, 0))
-            .headingPIDFCoefficients(new PIDFCoefficients(0.9, 0, 0, 0.01))
+            .forwardZeroPowerAcceleration(-46.1394)
+            .lateralZeroPowerAcceleration(-66.9937)
+            .translationalPIDFCoefficients(new PIDFCoefficients(0.2, 0, 0.01, 0))
+            .headingPIDFCoefficients(new PIDFCoefficients(1.5, 0, 0.06, 0.01))
             .drivePIDFCoefficients(new FilteredPIDFCoefficients(0.015, 0, 0.00001, 0.6, 0.01))
-            .mass(7.7);
+            .mass(11.5);
 
     public static PathConstraints pathConstraints = new PathConstraints(0.99, 100, 1, 1);
 
@@ -34,8 +34,8 @@ public class Constants {
 
     public static MecanumConstants driveConstants = new MecanumConstants()
             .maxPower(1)
-            .xVelocity(53.38354732)
-            .yVelocity(40.318533829 )
+            .xVelocity(56.4362105)
+            .yVelocity(32.19775)
             .rightFrontMotorName("rf") //EH1
             .rightRearMotorName("rr") //EH0
             .leftRearMotorName("lr") //EH3

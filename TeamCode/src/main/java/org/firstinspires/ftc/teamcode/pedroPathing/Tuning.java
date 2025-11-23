@@ -84,7 +84,7 @@ public class Tuning extends SelectableOpMode {
             follower = Constants.createFollower(hardwareMap);
         }
 
-        follower.setStartingPose(new Pose(72,72,Math.toRadians(90)));
+        follower.setStartingPose(new Pose(0,0,Math.toRadians(0)));
 
         poseHistory = follower.getPoseHistory();
 

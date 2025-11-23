@@ -39,8 +39,8 @@ public class RedDrive extends OpMode {
     // --------------------------------------------------------------------- //
     // --------------------------- CONTROLS ----------------------------- //
     // --------------------------------------------------------------------- //
-    private double shooterTPS = 1600.0;
-    private double lowShotTPS = 1300.0;
+    private double longShotTPS = 1300.0;
+    private double shortShotTPS = 1000.0;
     private int tagId = 20;
     private final Timer debounceTimer = new Timer();
     private boolean lastA = false, lastB = false, lastX = false, lastY = false;
@@ -78,14 +78,14 @@ public class RedDrive extends OpMode {
             follower = Constants.createFollower(hardwareMap);
 
             // Set start pose to redLongLoad
-            follower.setPose(AutonConstants.redLongLoad);
+            follower.setPose(AutonConstants.redHandLoad);
             poseLoadedFromAuton = true;
             headingInitialized = true;
 
             telemetry.addData("POSE", "Starting at RED Long Load: X=%.1f Y=%.1f H=%.1f°",
-                    AutonConstants.redLongLoad.getX(),
-                    AutonConstants.redLongLoad.getY(),
-                    Math.toDegrees(AutonConstants.redLongLoad.getHeading()));
+                    AutonConstants.redHandLoad.getX(),
+                    AutonConstants.redHandLoad.getY(),
+                    Math.toDegrees(AutonConstants.redHandLoad.getHeading()));
             hardware.addTelemetry("Status", "Follower initialized");
         } catch (Exception e) {
             hardware.addTelemetry("Error", "Follower failed: " + e.getMessage());
@@ -138,7 +138,7 @@ public class RedDrive extends OpMode {
         telemetry.addData("=== STATUS ===", "");
         telemetry.addData("Alliance", "RED (Fixed - 0°)");
         telemetry.addData("Start Position", "Red Long Load");
-        telemetry.addData("Shooter TPS", shooterTPS);
+//        telemetry.addData("Shooter TPS", shooterTPS);
         telemetry.addData("Burst Ready", threeShots.isBusy() ? "BUSY" : "READY");
         aligner.updateTelemetry(tagId);
         telemetry.update();
@@ -338,7 +338,7 @@ public class RedDrive extends OpMode {
             }
 
             hardware.collector.setPower(1.0);
-            hardware.shooter.setPower(0.0);  // Normal: shooter off
+            hardware.shooter.setPower(-0.10);  // Slight reverse to prevent jamming
             hardware.flipper.setPosition(0.0);
 
         } else {
@@ -359,13 +359,13 @@ public class RedDrive extends OpMode {
         // --------------------------------------------------------------- //
         // X = Short shot (1300 TPS)
         if (gamepad2.x && !lastX && !threeShots.isBusy()) {
-            threeShots.start((int) lowShotTPS);
+            threeShots.start((int) shortShotTPS);
         }
         lastX = gamepad2.x;
 
         // B = Long shot (1600 TPS)
         if (gamepad2.b && !lastB && !threeShots.isBusy()) {
-            threeShots.start((int) shooterTPS);
+            threeShots.start((int) longShotTPS);
         }
         lastB = gamepad2.b;
 
@@ -395,8 +395,8 @@ public class RedDrive extends OpMode {
 
         telemetry.addData("", "");
         telemetry.addData("=== SHOOTER ===", "");
-        telemetry.addData("High Shot TPS", shooterTPS);
-        telemetry.addData("Low Shot TPS", lowShotTPS);
+        telemetry.addData("High Shot TPS", longShotTPS);
+        telemetry.addData("Low Shot TPS", shortShotTPS);
         telemetry.addData("Current Velocity", "%.0f", hardware.shooter.getVelocity());
         telemetry.addData("Burst Status", threeShots.isBusy() ? "BUSY" : "READY");
 
