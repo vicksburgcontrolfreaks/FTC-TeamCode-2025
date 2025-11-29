@@ -17,7 +17,7 @@ public class AlignAprilTag {
 
     // === TUNABLE ALIGNMENT PARAMETERS ===
     public double TARGET_X = 680.0;
-    private double kp = 0.2;  // Reduced for smoother control
+    private double kp = 0.3;  // Reduced for smoother control
     private double maxSpeed = 0.2;
     private double tolerance = 30.0;
     private double timeoutSec = 3.0;

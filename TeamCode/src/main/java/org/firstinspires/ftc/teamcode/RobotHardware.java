@@ -1,9 +1,11 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
@@ -28,9 +30,11 @@ public class RobotHardware {
 
     // === SERVOS ===
     public Servo flipper;
+    public CRServo lBallServo, rBallServo;  // Ball feeding servos
 
     // === SENSORS ===
     public VoltageSensor batteryVoltageSensor;
+    public DistanceSensor ds1, ds2, ds3;  // Magazine ball detection sensors
 
     // === VISION ===
     public VisionPortal visionPortal;
@@ -56,7 +60,12 @@ public class RobotHardware {
     private static final String LWINCH_NAME = "lWinch";
     private static final String RWINCH_NAME = "rWinch";
     private static final String FLIPPER_NAME = "flipper";
+    private static final String LBALLSERVO_NAME = "LBSERV";
+    private static final String RBALLSERVO_NAME = "RBSERV";
     private static final String LED_NAME = "leds";
+    private static final String DS1_NAME = "DS1";
+    private static final String DS2_NAME = "DS2";
+    private static final String DS3_NAME = "DS3";
 
     /**
      * Initialize all hardware
@@ -80,6 +89,9 @@ public class RobotHardware {
         lr.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rr.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
+        // === VOLTAGE SENSOR (initialize before shooter PIDF setup) ===
+        batteryVoltageSensor = hardwareMap.voltageSensor.iterator().next();
+
         // === SHOOTER & COLLECTOR ===
         shooter = hardwareMap.get(DcMotorEx.class, SHOOTER_NAME);
         collector = hardwareMap.get(DcMotorEx.class, COLLECTOR_NAME);
@@ -97,9 +109,9 @@ public class RobotHardware {
         // D: Derivative gain (usually 0 for flywheel)
         // F: Feed-forward (based on motor max velocity and battery voltage)
         double batteryVoltage = getBatteryVoltage();
-        double maxVelocity = 2800.0;  // Max ticks/sec at 12V - tune this based on your motor
+        double maxVelocity = 1660.0;  // Max ticks/sec at 12V - tune this based on your motor
         double F = (32767.0 / maxVelocity) * (12.0 / batteryVoltage);
-        shooter.setVelocityPIDFCoefficients(1.5, 0.0, 0.0, F);
+        shooter.setVelocityPIDFCoefficients(3.0, 0.0, 0.0, F);
 
         shooter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         collector.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -108,6 +120,13 @@ public class RobotHardware {
         flipper = hardwareMap.get(Servo.class, FLIPPER_NAME);
         flipper.setDirection(Servo.Direction.FORWARD);
         // Don't set position during init - will be set in start()
+
+        // === BALL FEEDING SERVOS ===
+        lBallServo = hardwareMap.get(CRServo.class, LBALLSERVO_NAME);
+        rBallServo = hardwareMap.get(CRServo.class, RBALLSERVO_NAME);
+        lBallServo.setDirection(DcMotorSimple.Direction.REVERSE);  // Adjust if needed
+        rBallServo.setDirection(DcMotorSimple.Direction.FORWARD);  // Adjust if needed
+        // Servos will be controlled during shooting sequence
 
         // === LIFT SYSTEM ===
         lWinch = hardwareMap.get(DcMotorEx.class, LWINCH_NAME);
@@ -136,6 +155,7 @@ public class RobotHardware {
 //        } catch (Exception e) {
 //            leds = null;
 //            addTelemetry("LED", "NOT FOUND: " + e.getMessage());
+
 //        }
 
         // === VISION (AprilTags) ===
@@ -170,8 +190,10 @@ public class RobotHardware {
                 .setAutoStopLiveView(true)
                 .build();
 
-        // === VOLTAGE SENSOR ===
-        batteryVoltageSensor = hardwareMap.voltageSensor.iterator().next();
+        // === DISTANCE SENSORS ===
+        ds1 = hardwareMap.get(DistanceSensor.class, DS1_NAME);
+        ds2 = hardwareMap.get(DistanceSensor.class, DS2_NAME);
+        ds3 = hardwareMap.get(DistanceSensor.class, DS3_NAME);
 
         addTelemetry("Status", "Hardware Initialized");
     }
@@ -207,5 +229,99 @@ public class RobotHardware {
 
     public double getRuntime() {
         return runtime.seconds();
+    }
+
+    // --------------------------------------------------------------------- //
+    // -------------------------  BALL SERVO CONTROL  ---------------------- //
+    // --------------------------------------------------------------------- //
+
+    /**
+     * Start ball feeding servos (snug ball into flipper)
+     * Call this before flipper flips
+     */
+    public void startBallServos() {
+        lBallServo.setPower(1.0);  // Adjust power/direction as needed
+        rBallServo.setPower(1.0);  // Adjust power/direction as needed
+    }
+
+    /**
+     * Stop ball feeding servos
+     * Call this after flipper returns to 0 position
+     */
+    public void stopBallServos() {
+        lBallServo.setPower(0.0);
+        rBallServo.setPower(0.0);
+    }
+
+    // --------------------------------------------------------------------- //
+    // -------------------------  DISTANCE SENSORS  ------------------------ //
+    // --------------------------------------------------------------------- //
+
+    /**
+     * Check if ball is present in position 1 (bottom of magazine)
+     * @param thresholdMM Distance threshold in millimeters (typically 30-50mm)
+     * @return true if ball detected
+     */
+    public boolean isBall1Present(double thresholdMM) {
+        return ds1.getDistance(DistanceUnit.MM) < thresholdMM;
+    }
+
+    /**
+     * Check if ball is present in position 2 (middle of magazine)
+     * @param thresholdMM Distance threshold in millimeters (typically 30-50mm)
+     * @return true if ball detected
+     */
+    public boolean isBall2Present(double thresholdMM) {
+        return ds2.getDistance(DistanceUnit.MM) < thresholdMM;
+    }
+
+    /**
+     * Check if ball is present in position 3 (top of magazine)
+     * @param thresholdMM Distance threshold in millimeters (typically 30-50mm)
+     * @return true if ball detected
+     */
+    public boolean isBall3Present(double thresholdMM) {
+        return ds3.getDistance(DistanceUnit.MM) < thresholdMM;
+    }
+
+    /**
+     * Get count of balls in magazine
+     * @param thresholdMM Distance threshold in millimeters
+     * @return Number of balls detected (0-3)
+     */
+    public int getBallCount(double thresholdMM) {
+        int count = 0;
+        if (isBall1Present(thresholdMM)) count++;
+        if (isBall2Present(thresholdMM)) count++;
+        if (isBall3Present(thresholdMM)) count++;
+        return count;
+    }
+
+    /**
+     * Get count of balls in magazine using individual thresholds
+     * (DS1 needs higher threshold due to wiffle ball holes)
+     * @param ds1Threshold Threshold for DS1 (typically 130mm for wiffle balls)
+     * @param ds2Threshold Threshold for DS2 (typically 40mm)
+     * @param ds3Threshold Threshold for DS3 (typically 40mm)
+     * @return Number of balls detected (0-3)
+     */
+    public int getBallCount(double ds1Threshold, double ds2Threshold, double ds3Threshold) {
+        int count = 0;
+        if (isBall1Present(ds1Threshold)) count++;
+        if (isBall2Present(ds2Threshold)) count++;
+        if (isBall3Present(ds3Threshold)) count++;
+        return count;
+    }
+
+    /**
+     * Get all distance sensor readings in MM
+     * @return array of [ds1, ds2, ds3] distances
+     */
+    public double[] getDistanceSensorReadings() {
+        return new double[] {
+            ds1.getDistance(DistanceUnit.MM),
+            ds2.getDistance(DistanceUnit.MM),
+            ds3.getDistance(DistanceUnit.MM)
+        };
     }
 }

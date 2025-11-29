@@ -32,6 +32,11 @@ public class BlueDrive extends OpMode {
     private ThreeShots threeShots;
 
     // --------------------------------------------------------------------- //
+    // -------------------------- AUTO-COLLECT --------------------------- //
+    // --------------------------------------------------------------------- //
+    private AutoCollect autoCollect;
+
+    // --------------------------------------------------------------------- //
     // --------------------------- LED MANAGER -------------------------- //
     // --------------------------------------------------------------------- //
     private LEDManager ledManager;
@@ -39,11 +44,12 @@ public class BlueDrive extends OpMode {
     // --------------------------------------------------------------------- //
     // --------------------------- CONTROLS ----------------------------- //
     // --------------------------------------------------------------------- //
-    private double longShotTPS = 1300.0;
-    private double shortShotTPS = 1000.0;
+    private double longShotTPS = 1550.0;
+    private double shortShotTPS = 1300.0;
     private int tagId = 20;
     private final Timer debounceTimer = new Timer();
-    private boolean lastA = false, lastB = false, lastX = false, lastY = false;
+    private boolean lastGP1A = false;
+    private boolean lastGP2A = false, lastGP2B = false, lastGP2X = false, lastY = false;
     private static final double DEBOUNCE_TIME = 0.2;
 
     // --------------------------------------------------------------------- //
@@ -98,6 +104,10 @@ public class BlueDrive extends OpMode {
         // 3-Shot
         threeShots = new ThreeShots(hardware);
         threeShots.setTelemetryEnabled(true);
+
+        // Auto-Collect
+        autoCollect = new AutoCollect(hardware);
+        autoCollect.setTelemetryEnabled(true);
 
         // LED Manager
         ledManager = new LEDManager(hardware.leds, false);  // Default blue, will be updated in init_loop
@@ -283,7 +293,7 @@ public class BlueDrive extends OpMode {
         // ------------------- LOADING ZONE COMMAND ------------------ //
         // --------------------------------------------------------------- //
         // A = Auto-drive to loading zone (or cancel if already running)
-        if (gamepad1.a && !lastA) {
+        if (gamepad1.a && !lastGP1A) {
             if (loadingZoneCmd.isBusy()) {
                 loadingZoneCmd.cancel();
                 telemetry.addData("Loading Zone", "CANCELLED by driver");
@@ -291,7 +301,7 @@ public class BlueDrive extends OpMode {
                 loadingZoneCmd.start();
             }
         }
-        lastA = gamepad1.a;
+        lastGP1A = gamepad1.a;
 
         // Update loading zone command if running
         if (loadingZoneCmd.isBusy()) {
@@ -299,14 +309,19 @@ public class BlueDrive extends OpMode {
         }
 
         // --------------------------------------------------------------- //
-        // -------------------------- COLLECTOR ---------------------- //
+        // ----------------------- AUTO-COLLECT ------------------------ //
         // --------------------------------------------------------------- //
         // Don't allow manual collector control while loading zone command is active
         if (loadingZoneCmd.isBusy()) {
             // Loading zone command is controlling collector - skip manual controls
         }
-        // Y = CLEAR JAM (Collector reverse + Shooter reverse + Flipper reset)
+        // Y = CLEAR JAM (Collector reverse + Shooter reverse + Ball servos reverse + Flipper reset)
         else if (gamepad2.y) {
+            // Stop auto-collect if running
+            if (autoCollect.isBusy()) {
+                autoCollect.stop();
+            }
+
             // Interrupt 3-shot if running
             if (threeShots.isBusy()) {
                 threeShots.interrupt();
@@ -318,56 +333,69 @@ public class BlueDrive extends OpMode {
             }
 
             // Collector reverse
-            hardware.collector.setPower(-0.2);
+            hardware.collector.setPower(-1.0);
 
             // Shooter reverse @ 0.5 power
             hardware.shooter.setPower(-0.5);
 
+            // Ball servos reverse to clear jam
+            hardware.lBallServo.setPower(-1.0);
+            hardware.rBallServo.setPower(-1.0);
+
             // Reset flipper
             hardware.flipper.setPosition(0.0);
 
-        } else if (gamepad2.a) {
-            // A = Normal intake
-            if (threeShots.isBusy()) {
-                threeShots.interrupt();
+        } else if (gamepad2.a && !lastGP2A) {
+            // A = Toggle Auto-Collect (starts collection until 3 balls detected)
+            if (autoCollect.isBusy()) {
+                autoCollect.stop();
+            } else {
+                // Interrupt 3-shot if running
+                if (threeShots.isBusy()) {
+                    threeShots.interrupt();
+                }
+                autoCollect.start();
             }
-
-            // Ensure collector is in correct mode
-            if (hardware.collector.getMode() != DcMotor.RunMode.RUN_USING_ENCODER) {
-                hardware.collector.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            }
-
-            hardware.collector.setPower(1.0);
-            hardware.shooter.setPower(-0.10);  // Slight reverse to prevent jamming
-            hardware.flipper.setPosition(0.0);
-
-        } else {
-            // No button → stop everything (if not in 3-shot)
-            if (!threeShots.isBusy()) {
+        } else if (!gamepad2.y) {
+            // No button → stop everything (if not in auto-collect or 3-shot)
+            if (!autoCollect.isBusy() && !threeShots.isBusy()) {
                 // Ensure collector is in correct mode before stopping
                 if (hardware.collector.getMode() != DcMotor.RunMode.RUN_USING_ENCODER) {
                     hardware.collector.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
                 }
                 hardware.collector.setPower(0.0);
                 hardware.shooter.setPower(0.0);
+                hardware.stopBallServos();
                 hardware.flipper.setPosition(0.0);
             }
         }
+        lastGP2A = gamepad2.a;
+
+        // Update auto-collect (monitors sensors and stops when full)
+        autoCollect.update();
 
         // --------------------------------------------------------------- //
         // ----------------------- 3-SHOT BURST ---------------------- //
         // --------------------------------------------------------------- //
-        // X = Short shot (1000 TPS)
-        if (gamepad2.x && !lastX && !threeShots.isBusy()) {
+        // X = Short shot (1300 TPS)
+        if (gamepad2.x && !lastGP2X && !threeShots.isBusy()) {
+            // Stop auto-collect if running
+            if (autoCollect.isBusy()) {
+                autoCollect.stop();
+            }
             threeShots.start((int) shortShotTPS);
         }
-        lastX = gamepad2.x;
+        lastGP2X = gamepad2.x;
 
-        // B = Long shot (1300 TPS)
-        if (gamepad2.b && !lastB && !threeShots.isBusy()) {
+        // B = Long shot (1550 TPS)
+        if (gamepad2.b && !lastGP2B && !threeShots.isBusy()) {
+            // Stop auto-collect if running
+            if (autoCollect.isBusy()) {
+                autoCollect.stop();
+            }
             threeShots.start((int) longShotTPS);
         }
-        lastB = gamepad2.b;
+        lastGP2B = gamepad2.b;
 
         threeShots.update(tagId);
 
@@ -402,9 +430,10 @@ public class BlueDrive extends OpMode {
 
         telemetry.addData("", "");
         telemetry.addData("=== COLLECTOR ===", "");
+        telemetry.addData("Auto-Collect", autoCollect.isBusy() ? "ACTIVE" : "Ready");
+        telemetry.addData("Ball Count", "%d / 3", autoCollect.getBallCount());
         telemetry.addData("Mode", hardware.collector.getMode());
         telemetry.addData("Power", "%.2f", hardware.collector.getPower());
-        telemetry.addData("Motor Busy", hardware.collector.isBusy());
         telemetry.addData("Position", hardware.collector.getCurrentPosition());
 
         telemetry.addData("", "");
