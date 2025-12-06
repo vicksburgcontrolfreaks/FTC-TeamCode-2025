@@ -10,6 +10,7 @@ import com.pedropathing.paths.PathConstraints;
 import com.pedropathing.util.Timer;
 
 import org.firstinspires.ftc.teamcode.AlignAprilTag;
+import org.firstinspires.ftc.teamcode.AutoCollect;
 import org.firstinspires.ftc.teamcode.LEDManager;
 import org.firstinspires.ftc.teamcode.RobotHardware;
 import org.firstinspires.ftc.teamcode.ThreeShots;
@@ -28,9 +29,11 @@ public class AutoLongShot extends OpMode {
     private AlignAprilTag aligner;
     private ThreeShots threeShots;
     private LEDManager ledManager;
+    private AutoCollect autoCollect;
+
 
     // Alliance detection
-    private static final double DEFAULT_ALLIANCE_THRESHOLD = 200.0;
+    private static final double DEFAULT_ALLIANCE_THRESHOLD = 300.0;
     public double allianceThreshold = DEFAULT_ALLIANCE_THRESHOLD;  // Adjustable threshold
     private String alliance = null;  // "BLUE" or "RED", determined by AprilTag position
     private Timer ledFlashTimer;
@@ -39,8 +42,8 @@ public class AutoLongShot extends OpMode {
     private static final int BLUE_TAG_ID = 20;
     private static final int RED_TAG_ID = 24;
     private static final double COLLECTION_TIME_SEC = 4.0;
-    private static final double COLLECTION_DRIVE_SPEED = 0.3;
-    private static final double COLLECTION_MAX_POWER = 0.3;  // Slow collection speed
+    private static final double COLLECTION_DRIVE_SPEED = 0.6;
+    private static final double COLLECTION_MAX_POWER = 0.6;  // Slow drive collection speed
     private boolean isCollecting = false;
 
     // Obelisk reading
@@ -76,6 +79,10 @@ public class AutoLongShot extends OpMode {
         // Initialize 3-shot
         threeShots = new ThreeShots(hardware);
         threeShots.setTelemetryEnabled(true);
+
+        // Initialize auto-collect
+        autoCollect = new AutoCollect(hardware);
+        autoCollect.setTelemetryEnabled(true);
 
         // Initialize timers
         pathTimer = new Timer();
@@ -270,7 +277,6 @@ public class AutoLongShot extends OpMode {
     public void start() {
         hardware.flipper.setPosition(0.0);
         opmodeTimer.resetTimer();
-
         // Default to RED if no alliance detected (Tag 20 not visible)
         if (alliance == null) {
             alliance = "RED";
@@ -364,6 +370,9 @@ public class AutoLongShot extends OpMode {
                 threeShots.update(targetTagId);
             }
 
+            // Update auto-collect if running
+            autoCollect.update();
+
             // Update collection
             updateCollection();
 
@@ -414,27 +423,44 @@ public class AutoLongShot extends OpMode {
                 hardware.shooter.setPower(1.0);
 
                 if (!follower.isBusy()) {
-                    telemetry.addData("Action", "At score position, starting 3-shot");
-                    threeShots.start(1300);
+                    telemetry.addData("Action", "At score position, starting long shot");
+                    threeShots.startLongShot();
                     setPathState(2);
                 }
                 break;
 
             case 2:
-                // Wait for 3-shot to complete, THEN turn on collector and move to spike
+                // Wait for 3-shot to complete, THEN start auto-collect and move to spike
                 if (!threeShots.isBusy()) {
                     telemetry.addData("Action", "3-shot complete, moving to spike mark %d", obeliskReading);
 
-                    // NOW turn on collector and shooter reverse (after shooting is done)
-                    hardware.collector.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-                    hardware.collector.setPower(1.0);
-                    hardware.shooter.setPower(-0.10);  // Reverse to prevent jamming
+                    // Start auto-collect sequence
+                    autoCollect.start();
 
                     // Build path to target spike with heading interpolation
                     Pose currentPose = follower.getPose();
-                    com.pedropathing.paths.Path pathToSpike = new com.pedropathing.paths.Path(
-                            new com.pedropathing.geometry.BezierLine(currentPose, targetSpike));
+                    com.pedropathing.paths.Path pathToSpike;
+
+                    // For spike 1 (tag 23), use waypoint to avoid spike 2
+                    if (obeliskReading == 23) {
+                        // Use absolute waypoint coordinates to avoid spike 2
+                        // Blue: go above spike 2 (Y=90), Red: go above spike 2 (Y=90)
+                        double waypointX = alliance.equals("BLUE") ? 52 : 88; // Stay at score X
+                        double waypointY = 90; // Above all spikes
+                        double waypointHeading = alliance.equals("BLUE") ? Math.toRadians(180) : Math.toRadians(0);
+                        Pose waypoint = new Pose(waypointX, waypointY, waypointHeading);
+
+                        pathToSpike = new com.pedropathing.paths.Path(
+                                new com.pedropathing.geometry.BezierCurve(currentPose, waypoint, targetSpike));
+                    } else {
+                        // For other spikes, use direct line
+                        pathToSpike = new com.pedropathing.paths.Path(
+                                new com.pedropathing.geometry.BezierLine(currentPose, targetSpike));
+                    }
                     pathToSpike.setLinearHeadingInterpolation(currentPose.getHeading(), targetSpike.getHeading());
+
+                    // Slow down for collection approach
+                    follower.setMaxPower(COLLECTION_MAX_POWER);
 
                     scoreToSpike = follower.pathBuilder()
                             .addPath(pathToSpike)
@@ -467,30 +493,27 @@ public class AutoLongShot extends OpMode {
             case 4:
                 // Wait until at spikePost, then return to score
                 if (!follower.isBusy()) {
-                    telemetry.addData("Action", "At spikePost, returning to score");
+                    telemetry.addData("Action", "At spikePost, stopping auto-collect and starting shooter");
 
                     // Reset to full power for normal driving
                     follower.setMaxPower(1.0);
 
-                    // Stop shooter reverse and collector
-                    hardware.shooter.setPower(0.0);
-                    hardware.collector.setPower(0.0);
+                    // Stop auto-collect (this handles servos and collector backoff)
+                    autoCollect.stop();
 
-                    // Build path back to SHORT score from current position (alliance-specific)
+                    // Start shooter for next shot
+                    hardware.shooter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+                    hardware.shooter.setPower(1.0);  // Full power for shooting
+
+                    // Build path: spikePost -> spike (waypoint) -> shortScore (to avoid running through other spikes)
                     Pose currentPose = follower.getPose();
-                    com.pedropathing.paths.Path pathToShortScore;
-                    if (alliance.equals("BLUE")) {
-                        pathToShortScore = new com.pedropathing.paths.Path(
-                                new com.pedropathing.geometry.BezierLine(currentPose, AutonConstants.blueShortScore));
-                        pathToShortScore.setLinearHeadingInterpolation(currentPose.getHeading(), AutonConstants.blueShortScore.getHeading());
-                    } else {
-                        pathToShortScore = new com.pedropathing.paths.Path(
-                                new com.pedropathing.geometry.BezierLine(currentPose, AutonConstants.redShortScore));
-                        pathToShortScore.setLinearHeadingInterpolation(currentPose.getHeading(), AutonConstants.redShortScore.getHeading());
-                    }
+                    Pose shortScore = alliance.equals("BLUE") ? AutonConstants.blueShortScore : AutonConstants.redShortScore;
+
                     collectionToScore = follower.pathBuilder()
-                            .addPath(pathToShortScore)
+                            .addPath(new com.pedropathing.geometry.BezierCurve(currentPose, targetSpike, shortScore))
+                            .setLinearHeadingInterpolation(currentPose.getHeading(), shortScore.getHeading())
                             .build();
+
                     follower.followPath(collectionToScore, true);
                     setPathState(5);
                 }
@@ -498,29 +521,31 @@ public class AutoLongShot extends OpMode {
 
             case 5:
                 // Wait until back at SHORT score, then shoot collected balls
+                // Shooter already spinning from case 4
                 if (!follower.isBusy()) {
-                    telemetry.addData("Action", "At SHORT score position, starting 3-shot at 1100 TPS");
-                    threeShots.start(1100);
+                    telemetry.addData("Action", "At SHORT score position, starting short shot");
+                    threeShots.startShortShot();
                     setPathState(6);
                 }
                 break;
 
             case 6:
-                // Wait for first cycle 3-shot to complete, THEN turn on collector and move to second spike
+                // Wait for first cycle 3-shot to complete, THEN start auto-collect and move to second spike
                 if (!threeShots.isBusy()) {
                     telemetry.addData("Action", "First cycle complete, moving to second spike (X=%.1f Y=%.1f)",
                             secondSpike.getX(), secondSpike.getY());
 
-                    // NOW turn on collector and shooter reverse for second collection (after shooting is done)
-                    hardware.collector.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-                    hardware.collector.setPower(1.0);
-                    hardware.shooter.setPower(-0.10);  // Reverse to prevent jamming
+                    // Start auto-collect sequence for second collection
+                    autoCollect.start();
 
                     // Build path to second spike with heading interpolation
                     Pose currentPose = follower.getPose();
                     com.pedropathing.paths.Path pathToSecondSpike = new com.pedropathing.paths.Path(
                             new com.pedropathing.geometry.BezierLine(currentPose, secondSpike));
                     pathToSecondSpike.setLinearHeadingInterpolation(currentPose.getHeading(), secondSpike.getHeading());
+
+                    // Slow down for collection approach
+                    follower.setMaxPower(COLLECTION_MAX_POWER);
 
                     PathChain chainToSecondSpike = follower.pathBuilder()
                             .addPath(pathToSecondSpike)
@@ -553,30 +578,27 @@ public class AutoLongShot extends OpMode {
             case 8:
                 // Wait until at secondSpikePost, then return to score
                 if (!follower.isBusy()) {
-                    telemetry.addData("Action", "At second spikePost, returning to score");
+                    telemetry.addData("Action", "At second spikePost, stopping auto-collect and starting shooter");
 
                     // Reset to full power for normal driving
                     follower.setMaxPower(1.0);
 
-                    // Stop shooter reverse and collector
-                    hardware.shooter.setPower(0.0);
-                    hardware.collector.setPower(0.0);
+                    // Stop auto-collect (this handles servos and collector backoff)
+                    autoCollect.stop();
 
-                    // Build path back to SHORT score from current position (alliance-specific)
+                    // Start shooter for next shot
+                    hardware.shooter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+                    hardware.shooter.setPower(1.0);  // Full power for shooting
+
+                    // Build path: secondSpikePost -> secondSpike (waypoint) -> shortScore (to avoid running through other spikes)
                     Pose currentPose2 = follower.getPose();
-                    com.pedropathing.paths.Path pathToShortScore2;
-                    if (alliance.equals("BLUE")) {
-                        pathToShortScore2 = new com.pedropathing.paths.Path(
-                                new com.pedropathing.geometry.BezierLine(currentPose2, AutonConstants.blueShortScore));
-                        pathToShortScore2.setLinearHeadingInterpolation(currentPose2.getHeading(), AutonConstants.blueShortScore.getHeading());
-                    } else {
-                        pathToShortScore2 = new com.pedropathing.paths.Path(
-                                new com.pedropathing.geometry.BezierLine(currentPose2, AutonConstants.redShortScore));
-                        pathToShortScore2.setLinearHeadingInterpolation(currentPose2.getHeading(), AutonConstants.redShortScore.getHeading());
-                    }
+                    Pose shortScore = alliance.equals("BLUE") ? AutonConstants.blueShortScore : AutonConstants.redShortScore;
+
                     collectionToScore = follower.pathBuilder()
-                            .addPath(pathToShortScore2)
+                            .addPath(new com.pedropathing.geometry.BezierCurve(currentPose2, secondSpike, shortScore))
+                            .setLinearHeadingInterpolation(currentPose2.getHeading(), shortScore.getHeading())
                             .build();
+
                     follower.followPath(collectionToScore, true);
                     setPathState(9);
                 }
@@ -584,9 +606,10 @@ public class AutoLongShot extends OpMode {
 
             case 9:
                 // Wait until back at SHORT score, then shoot second batch of collected balls
+                // Shooter already spinning from case 8
                 if (!follower.isBusy()) {
-                    telemetry.addData("Action", "At SHORT score position, starting second 3-shot at 1100 TPS");
-                    threeShots.start(1100);
+                    telemetry.addData("Action", "At SHORT score position, starting second short shot");
+                    threeShots.startShortShot();
                     setPathState(10);
                 }
                 break;

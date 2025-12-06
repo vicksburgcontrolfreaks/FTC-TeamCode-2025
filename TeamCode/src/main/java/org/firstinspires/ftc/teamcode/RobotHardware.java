@@ -24,6 +24,14 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
  */
 public class RobotHardware {
 
+    // ========================================================================
+    // ROBOT CONFIGURATION - SET THIS TO MATCH YOUR ROBOT
+    // ========================================================================
+    // true = Robot 6494 (has all sensors: DS1, DS2, DS3)
+    // false = Robot 5618 (only has DS3, no DS1/DS2)
+    public static final boolean IS_ROBOT_6494 = false;  // <-- CHANGE THIS
+    // ========================================================================
+
     // === MOTORS ===
     public DcMotorEx lf, rf, lr, rr;
     public DcMotorEx shooter, collector, lWinch, rWinch;
@@ -190,10 +198,48 @@ public class RobotHardware {
                 .setAutoStopLiveView(true)
                 .build();
 
-        // === DISTANCE SENSORS ===
-        ds1 = hardwareMap.get(DistanceSensor.class, DS1_NAME);
-        ds2 = hardwareMap.get(DistanceSensor.class, DS2_NAME);
-        ds3 = hardwareMap.get(DistanceSensor.class, DS3_NAME);
+        // === DISTANCE SENSORS (ROBOT-SPECIFIC) ===
+        // Robot 6494 has all 3 sensors, Robot 5618 only has DS3
+        if (IS_ROBOT_6494) {
+            // Robot 6494: Initialize all sensors
+            try {
+                ds1 = hardwareMap.get(DistanceSensor.class, DS1_NAME);
+                addTelemetry("DS1", "Initialized (6494)");
+            } catch (Exception e) {
+                ds1 = null;
+                addTelemetry("DS1", "ERROR: " + e.getMessage());
+            }
+
+            try {
+                ds2 = hardwareMap.get(DistanceSensor.class, DS2_NAME);
+                addTelemetry("DS2", "Initialized (6494)");
+            } catch (Exception e) {
+                ds2 = null;
+                addTelemetry("DS2", "ERROR: " + e.getMessage());
+            }
+
+            try {
+                ds3 = hardwareMap.get(DistanceSensor.class, DS3_NAME);
+                addTelemetry("DS3", "Initialized (6494)");
+            } catch (Exception e) {
+                ds3 = null;
+                addTelemetry("DS3", "ERROR: " + e.getMessage());
+            }
+        } else {
+            // Robot 5618: Only DS3, skip DS1 and DS2
+            ds1 = null;
+            ds2 = null;
+            addTelemetry("DS1", "Skipped (5618 - not installed)");
+            addTelemetry("DS2", "Skipped (5618 - not installed)");
+
+            try {
+                ds3 = hardwareMap.get(DistanceSensor.class, DS3_NAME);
+                addTelemetry("DS3", "Initialized (5618)");
+            } catch (Exception e) {
+                ds3 = null;
+                addTelemetry("DS3", "ERROR: " + e.getMessage());
+            }
+        }
 
         addTelemetry("Status", "Hardware Initialized");
     }
@@ -245,6 +291,15 @@ public class RobotHardware {
     }
 
     /**
+     * Start ball feeding servos in opposite directions
+     * Used for indexing third shot
+     */
+    public void startBallServosOpposite() {
+        lBallServo.setPower(-1.0);  // Opposite direction
+        rBallServo.setPower(1.0);   // Normal direction
+    }
+
+    /**
      * Stop ball feeding servos
      * Call this after flipper returns to 0 position
      */
@@ -260,27 +315,30 @@ public class RobotHardware {
     /**
      * Check if ball is present in position 1 (bottom of magazine)
      * @param thresholdMM Distance threshold in millimeters (typically 30-50mm)
-     * @return true if ball detected
+     * @return true if ball detected (false if sensor not present)
      */
     public boolean isBall1Present(double thresholdMM) {
+        if (ds1 == null) return false;
         return ds1.getDistance(DistanceUnit.MM) < thresholdMM;
     }
 
     /**
      * Check if ball is present in position 2 (middle of magazine)
      * @param thresholdMM Distance threshold in millimeters (typically 30-50mm)
-     * @return true if ball detected
+     * @return true if ball detected (false if sensor not present)
      */
     public boolean isBall2Present(double thresholdMM) {
+        if (ds2 == null) return false;
         return ds2.getDistance(DistanceUnit.MM) < thresholdMM;
     }
 
     /**
      * Check if ball is present in position 3 (top of magazine)
      * @param thresholdMM Distance threshold in millimeters (typically 30-50mm)
-     * @return true if ball detected
+     * @return true if ball detected (false if sensor not present)
      */
     public boolean isBall3Present(double thresholdMM) {
+        if (ds3 == null) return false;
         return ds3.getDistance(DistanceUnit.MM) < thresholdMM;
     }
 
@@ -315,13 +373,13 @@ public class RobotHardware {
 
     /**
      * Get all distance sensor readings in MM
-     * @return array of [ds1, ds2, ds3] distances
+     * @return array of [ds1, ds2, ds3] distances (returns 9999.0 for missing sensors)
      */
     public double[] getDistanceSensorReadings() {
         return new double[] {
-            ds1.getDistance(DistanceUnit.MM),
-            ds2.getDistance(DistanceUnit.MM),
-            ds3.getDistance(DistanceUnit.MM)
+            ds1 != null ? ds1.getDistance(DistanceUnit.MM) : 9999.0,
+            ds2 != null ? ds2.getDistance(DistanceUnit.MM) : 9999.0,
+            ds3 != null ? ds3.getDistance(DistanceUnit.MM) : 9999.0
         };
     }
 }

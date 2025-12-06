@@ -10,6 +10,7 @@ public class LEDManager {
     private boolean matchStarted = false;
     private boolean sequenceActive = false;
     private boolean magazineFull = false;
+    private boolean liftLimitActive = false;
     private int flashCount = 0;
     private double flashTimer = 0;
     private FlashColor flashColor = FlashColor.ALLIANCE;
@@ -45,8 +46,18 @@ public class LEDManager {
         magazineFull = full;
     }
 
+    public void setLiftLimit(boolean atLimit) {
+        liftLimitActive = atLimit;
+    }
+
     public void update() {
-        // Flash takes priority over everything
+        // Lift limit takes highest priority
+        if (liftLimitActive) {
+            updateLiftLimitPattern();
+            return;
+        }
+
+        // Flash takes priority over everything else
         if (flashCount > 0) {
             updateFlash();
             return;
@@ -110,7 +121,7 @@ public class LEDManager {
     }
 
     private void updateFlash() {
-        if (timer.milliseconds() - flashTimer > 300) {
+        if (timer.milliseconds() - flashTimer > 150) {
             flashCount--;
             flashTimer = timer.milliseconds();
 
@@ -130,6 +141,23 @@ public class LEDManager {
                     }
                 }
             }
+        }
+    }
+
+    private void updateLiftLimitPattern() {
+        // Transition: Red -> Purple -> White -> Red (continuous loop)
+        // Each color holds for 500ms
+        double cycleTime = timer.milliseconds() % 1500;  // 3 colors * 500ms = 1500ms cycle
+
+        if (cycleTime < 500) {
+            // Red
+            leds.setPattern(RevBlinkinLedDriver.BlinkinPattern.RED);
+        } else if (cycleTime < 1000) {
+            // Purple
+            leds.setPattern(RevBlinkinLedDriver.BlinkinPattern.VIOLET);
+        } else {
+            // White
+            leds.setPattern(RevBlinkinLedDriver.BlinkinPattern.WHITE);
         }
     }
 }

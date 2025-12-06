@@ -1,4 +1,5 @@
 <Robot type="FirstInspires-FTC">
+    <Webcam name="Webcam 1" serialNumber="ACNV9P1F17303332"/>
     <LynxUsbDevice name="Control Hub Portal" serialNumber="(embedded)" parentModuleAddress="173">
         <LynxModule name="Expansion Hub 4" port="4">
             <RevRoboticsUltraplanetaryHDHexMotor name="rr" port="0"/>
@@ -14,8 +15,8 @@
             <RevRoboticsUltraplanetaryHDHexMotor name="lWinch" port="2"/>
             <RevRoboticsUltraplanetaryHDHexMotor name="rWinch" port="3"/>
             <RevBlinkinLedDriver name="leds" port="0"/>
-            <Servo name="LBSERV" port="3"/>
-            <Servo name="RBSERV" port="4"/>
+            <ContinuousRotationServo name="LBSERV" port="3"/>
+            <ContinuousRotationServo name="RBSERV" port="4"/>
             <Servo name="flipper" port="5"/>
             <DigitalDevice name="sensor1" port="0"/>
             <DigitalDevice name="sensor2" port="1"/>
@@ -25,6 +26,4 @@
             <REV_VL53L0X_RANGE_SENSOR name="DS3" port="0" bus="3"/>
         </LynxModule>
     </LynxUsbDevice>
-    <!--Webcam name="Webcam 1" serialNumber="9762FD40" /-->
-    <Webcam name="Webcam 1" serialNumber="ACNV9P1F17303332"/>
 </Robot>

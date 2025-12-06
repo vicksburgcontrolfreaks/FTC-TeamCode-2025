@@ -10,6 +10,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.Auton.AutonConstants;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
 import java.util.List;
@@ -42,14 +43,18 @@ public class BlueDrive extends OpMode {
     private LEDManager ledManager;
 
     // --------------------------------------------------------------------- //
+    // --------------------------- LIFT SYSTEM --------------------------- //
+    // --------------------------------------------------------------------- //
+    private LiftSystem liftSystem;
+
+    // --------------------------------------------------------------------- //
     // --------------------------- CONTROLS ----------------------------- //
     // --------------------------------------------------------------------- //
-    private double longShotTPS = 1550.0;
-    private double shortShotTPS = 1300.0;
     private int tagId = 20;
     private final Timer debounceTimer = new Timer();
     private boolean lastGP1A = false;
     private boolean lastGP2A = false, lastGP2B = false, lastGP2X = false, lastY = false;
+    private boolean lastAutoCollectBusy = false;  // Track auto-collect state for LED flash
     private static final double DEBOUNCE_TIME = 0.2;
 
     // --------------------------------------------------------------------- //
@@ -112,6 +117,9 @@ public class BlueDrive extends OpMode {
         // LED Manager
         ledManager = new LEDManager(hardware.leds, false);  // Default blue, will be updated in init_loop
 
+        // Lift System
+        liftSystem = new LiftSystem(hardware.lWinch, hardware.rWinch, telemetry);
+
         // Loading Zone Command
         loadingZoneCmd = new LoadingZoneCommand(hardware, follower, telemetry, "BLUE");
 
@@ -144,11 +152,12 @@ public class BlueDrive extends OpMode {
         telemetry.addData("B", "3-Shot Burst @ 1600 TPS");
         telemetry.addData("X", "Manual Flipper");
         telemetry.addData("Y", "Clear Misfeed (Reverse All)");
+        telemetry.addData("Left Stick Up", "Auto Lift to Limit");
+        telemetry.addData("Left Stick Down", "Lower Lift (Variable Speed)");
         telemetry.addData("", "");
         telemetry.addData("=== STATUS ===", "");
         telemetry.addData("Alliance", "BLUE (Fixed - 180°)");
         telemetry.addData("Start Position", "Blue Long Load");
-        telemetry.addData("Long Shot TPS", longShotTPS);
         telemetry.addData("Burst Ready", threeShots.isBusy() ? "BUSY" : "READY");
         aligner.updateTelemetry(tagId);
         telemetry.update();
@@ -184,6 +193,12 @@ public class BlueDrive extends OpMode {
     @Override
     public void start() {
         hardware.flipper.setPosition(0.0);
+
+        // Disable vision processing during teleop to reduce lag
+        if (hardware.visionPortal != null &&
+            hardware.visionPortal.getCameraState() == VisionPortal.CameraState.STREAMING) {
+            hardware.visionPortal.stopStreaming();
+        }
     }
     public void loop() {
 
@@ -293,6 +308,8 @@ public class BlueDrive extends OpMode {
         // ------------------- LOADING ZONE COMMAND ------------------ //
         // --------------------------------------------------------------- //
         // A = Auto-drive to loading zone (or cancel if already running)
+        // DISABLED - Auto-drive command removed
+        /*
         if (gamepad1.a && !lastGP1A) {
             if (loadingZoneCmd.isBusy()) {
                 loadingZoneCmd.cancel();
@@ -307,6 +324,7 @@ public class BlueDrive extends OpMode {
         if (loadingZoneCmd.isBusy()) {
             loadingZoneCmd.update();
         }
+        */
 
         // --------------------------------------------------------------- //
         // ----------------------- AUTO-COLLECT ------------------------ //
@@ -374,30 +392,45 @@ public class BlueDrive extends OpMode {
         // Update auto-collect (monitors sensors and stops when full)
         autoCollect.update();
 
+        // Flash green when auto-collect finishes
+        boolean autoCollectBusy = autoCollect.isBusy();
+        if (lastAutoCollectBusy && !autoCollectBusy) {
+            ledManager.flashGreen(5);  // Flicker green 5 times (~1.5 seconds)
+        }
+        lastAutoCollectBusy = autoCollectBusy;
+
         // --------------------------------------------------------------- //
         // ----------------------- 3-SHOT BURST ---------------------- //
         // --------------------------------------------------------------- //
-        // X = Short shot (1300 TPS)
+        // X = Short shot
         if (gamepad2.x && !lastGP2X && !threeShots.isBusy()) {
             // Stop auto-collect if running
             if (autoCollect.isBusy()) {
                 autoCollect.stop();
             }
-            threeShots.start((int) shortShotTPS);
+            threeShots.startShortShot();
         }
         lastGP2X = gamepad2.x;
 
-        // B = Long shot (1550 TPS)
+        // B = Long shot
         if (gamepad2.b && !lastGP2B && !threeShots.isBusy()) {
             // Stop auto-collect if running
             if (autoCollect.isBusy()) {
                 autoCollect.stop();
             }
-            threeShots.start((int) longShotTPS);
+            threeShots.startLongShot();
         }
         lastGP2B = gamepad2.b;
 
         threeShots.update(tagId);
+
+        // --------------------------------------------------------------- //
+        // ----------------------- LIFT SYSTEM ------------------------ //
+        // --------------------------------------------------------------- //
+        liftSystem.update(gamepad2);
+
+        // Update LED manager with lift limit status (keeps flashing until cleared)
+        ledManager.setLiftLimit(liftSystem.isLimitReached());
 
         // --------------------------------------------------------------- //
         // ----------------------- MANUAL FLIPPER -------------------- //
@@ -407,45 +440,14 @@ public class BlueDrive extends OpMode {
         // --------------------------------------------------------------- //
         // --------------------------- TELEMETRY --------------------- //
         // --------------------------------------------------------------- //
-        telemetry.addData("=== ALLIANCE ===", "");
-        telemetry.addData("Alliance", isRedAlliance ? "RED" : "BLUE");
-        telemetry.addData("Field Forward", "%.0f°", Math.toDegrees(fieldForwardHeading));
-        telemetry.addData("Tag ID", tagId);
-
-        telemetry.addData("", "");
-        telemetry.addData("=== POSE ===", "");
-        telemetry.addData("X", "%.1f", follower.getPose().getX());
-        telemetry.addData("Y", "%.1f", follower.getPose().getY());
-        telemetry.addData("Raw Heading", "%.1f°", Math.toDegrees(follower.getPose().getHeading()));
-        telemetry.addData("Heading Offset", "%.1f°", Math.toDegrees(headingOffset));
-        telemetry.addData("Effective Heading", "%.1f°", Math.toDegrees(follower.getPose().getHeading() + headingOffset));
-        telemetry.addData("Relative to Field", "%.1f°", Math.toDegrees((follower.getPose().getHeading() + headingOffset) - fieldForwardHeading));
-
-        telemetry.addData("", "");
-        telemetry.addData("=== SHOOTER ===", "");
-        telemetry.addData("Long Shot TPS", longShotTPS);
-        telemetry.addData("Short Shot TPS", shortShotTPS);
-        telemetry.addData("Current Velocity", "%.0f", hardware.shooter.getVelocity());
-        telemetry.addData("Burst Status", threeShots.isBusy() ? "BUSY" : "READY");
-
-        telemetry.addData("", "");
-        telemetry.addData("=== COLLECTOR ===", "");
-        telemetry.addData("Auto-Collect", autoCollect.isBusy() ? "ACTIVE" : "Ready");
-        telemetry.addData("Ball Count", "%d / 3", autoCollect.getBallCount());
-        telemetry.addData("Mode", hardware.collector.getMode());
-        telemetry.addData("Power", "%.2f", hardware.collector.getPower());
-        telemetry.addData("Position", hardware.collector.getCurrentPosition());
-
-        telemetry.addData("", "");
-        telemetry.addData("=== LOADING ZONE ===", "");
-        telemetry.addData("Status", loadingZoneCmd.isBusy() ? "ACTIVE (Press A to cancel)" : "READY (Press A to start)");
-        telemetry.addData("Alliance", isRedAlliance ? "RED" : "BLUE");
-
-        telemetry.addData("", "");
-        telemetry.addData("=== SYSTEM ===", "");
-        telemetry.addData("Drive Mode", slowMode ? "SLOW (LB)" : "NORMAL");
-        telemetry.addData("Battery", "%.2fV", hardware.getBatteryVoltage());
-
+        // Minimal telemetry to reduce lag - only show critical info
+        telemetry.addData("Heading", "%.0f°", Math.toDegrees(follower.getPose().getHeading() + headingOffset));
+        telemetry.addData("Shooter", "%.0f TPS", hardware.shooter.getVelocity());
+        telemetry.addData("Balls", "%d/3", autoCollect.getBallCount());
+        telemetry.addData("Battery", "%.1fV", hardware.getBatteryVoltage());
+        if (liftSystem.isLimitReached()) {
+            telemetry.addData("⚠ LIFT", "LIMIT REACHED");
+        }
         telemetry.update();
     }
 

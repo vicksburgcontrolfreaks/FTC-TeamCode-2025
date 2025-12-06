@@ -15,9 +15,13 @@ public class ThreeShots {
     private static final int   INDEX_TICKS = 550;
     private static final int   BACKOFF_TICKS = 50;
     private static final double INDEX_POWER = 0.4;
-    private static final int   FLIP_TIME_MS = 350;
-    private static final int   VELOCITY_TOLERANCE = 15;
-    private static final int   FIRST_SHOT_MIN_WAIT_MS = 500;  // Minimum time to stabilize before first shot
+    private static final int   FLIP_TIME_MS = 300;
+    private static final int   VELOCITY_TOLERANCE = 30;
+    private static final int   FIRST_SHOT_MIN_WAIT_MS = 300;  // Minimum time to stabilize before first shot
+
+    // Shot velocities (tune these in one place for all op modes)
+    private static final int   SHORT_SHOT_TPS = 1350;
+    private static final int   LONG_SHOT_TPS = 1550;
 
     // --------------------------------------------------------------------- //
     // --------------------------  STATE  --------------------------------- //
@@ -60,9 +64,25 @@ public class ThreeShots {
         stateStartTime = System.currentTimeMillis();
 
         hardware.shooter.setVelocity(velocity);
+
+        // Enable camera for AprilTag alignment during shooting
+        if (hardware.visionPortal != null) {
+            hardware.visionPortal.resumeStreaming();
+        }
+
         if (enableTelemetry) {
             hardware.telemetry.addData("3-SHOT", "START @ %d tps", velocity);
         }
+    }
+
+    /** Start short shot burst (close range) */
+    public void startShortShot() {
+        start(SHORT_SHOT_TPS);
+    }
+
+    /** Start long shot burst (far range) */
+    public void startLongShot() {
+        start(LONG_SHOT_TPS);
     }
 
     /** Call every loop (auto or teleop). */
@@ -101,7 +121,8 @@ public class ThreeShots {
                         hardware.collector.setPower(INDEX_POWER);
 
                         // Start ball servos during indexing
-                        hardware.startBallServos();
+                        // Use opposite directions for all indexing (shots 1->2 and 2->3)
+                        hardware.startBallServosOpposite();
 
                         flipState = FlipState.INDEXING;
                         stateStartTime = System.currentTimeMillis();
@@ -144,6 +165,11 @@ public class ThreeShots {
                     if (shot >= 3) {
                         // Sequence complete after shot 3
                         flipState = FlipState.IDLE;
+
+                        // Disable camera to reduce lag when not shooting
+                        if (hardware.visionPortal != null) {
+                            hardware.visionPortal.stopStreaming();
+                        }
 
                         if (enableTelemetry) {
                             hardware.telemetry.addData("3-SHOT", "COMPLETE");
@@ -226,6 +252,11 @@ public class ThreeShots {
         hardware.flipper.setPosition(0.0);
         hardware.stopBallServos();
         hardware.collector.setPower(0.0);
+
+        // Disable camera to reduce lag when not shooting
+        if (hardware.visionPortal != null) {
+            hardware.visionPortal.stopStreaming();
+        }
 
         // RESET STATE
         shot = 3;  // Mark as complete

@@ -9,14 +9,14 @@ public class AutonConstants {
     public static final Pose blueLongStart = new Pose(54, 9, Math.toRadians(270)); // Start position from long shot88,8
     public static final Pose blueHandLoad = new Pose(110, 13, Math.toRadians(0)); // Hand load position for TeleOp
     public static final Pose blueHandLoadPost = new Pose(130, 13, Math.toRadians(0)); // Collection target from hand load
-    public static final Pose blueLongScore = new Pose(52, 14, Math.toRadians(291)); // Scoring position on long shot
+    public static final Pose blueLongScore = new Pose(52, 14, Math.toRadians(288)); // Scoring position on long shot
     public static final Pose blueShortStart = new Pose(35, 133, Math.toRadians(0)); // Start position from short shot88,14
     public static final Pose blueSpike1 = new Pose(42, 83, Math.toRadians(180)); // P-P-G 23
     public static final Pose blueSpike2 = new Pose(42, 58, Math.toRadians(180)); // P-G-P 22
     public static final Pose blueSpike3 = new Pose(42, 35, Math.toRadians(180)); // G-P-P 21
-    public static final Pose blueSpike1Post = new Pose(20, 83, Math.toRadians(180)); // P-P-G post
-    public static final Pose blueSpike2Post = new Pose(20, 58, Math.toRadians(180)); // P-G-P post
-    public static final Pose blueSpike3Post = new Pose(20, 35, Math.toRadians(180)); // G-P-P post
+    public static final Pose blueSpike1Post = new Pose(22, 83, Math.toRadians(180)); // P-P-G post
+    public static final Pose blueSpike2Post = new Pose(22, 58, Math.toRadians(180)); // P-G-P post
+    public static final Pose blueSpike3Post = new Pose(22, 35, Math.toRadians(180)); // G-P-P post
     public static final Pose blueShortScore = new Pose(56, 80, Math.toRadians(296)); // Scoring position on short shot
     public static final Pose blueGateRelease = new Pose(20, 70, Math.toRadians(180)); // Position to release the blue gate
 
@@ -98,8 +98,8 @@ public class AutonConstants {
     }
 
     public static Path redLongScorePath(Pose start) {
-        Path path = new Path(new BezierLine(start, redShortScore));
-        path.setLinearHeadingInterpolation(start.getHeading(), redShortScore.getHeading());
+        Path path = new Path(new BezierLine(start, redLongScore));
+        path.setLinearHeadingInterpolation(start.getHeading(), redLongScore.getHeading());
         return path;
     }
 
